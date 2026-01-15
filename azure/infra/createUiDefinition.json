@@ -1,0 +1,158 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+    "handler": "Microsoft.Azure.CreateUIDef",
+    "version": "0.1.2-preview",
+    "parameters": {
+        "basics": [
+            {
+                "name": "solutionName",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Solution Name",
+                "toolTip": "A unique name prefix for all resources (3-15 lowercase characters).",
+                "defaultValue": "insightflow",
+                "constraints": {
+                    "required": true,
+                    "regex": "^[a-z][a-z0-9]{2,14}$",
+                    "validationMessage": "Must be 3-15 lowercase letters and numbers, starting with a letter."
+                }
+            },
+            {
+                "name": "openAiLocation",
+                "type": "Microsoft.Common.DropDown",
+                "label": "Azure OpenAI Region",
+                "toolTip": "Region for Azure OpenAI (must have GPT-4o-mini availability)",
+                "defaultValue": "eastus2",
+                "constraints": {
+                    "required": true,
+                    "allowedValues": [
+                        { "label": "East US 2", "value": "eastus2" },
+                        { "label": "Sweden Central", "value": "swedencentral" },
+                        { "label": "West Europe", "value": "westeurope" }
+                    ]
+                }
+            }
+        ],
+        "steps": [
+            {
+                "name": "salesforceConfig",
+                "label": "Salesforce",
+                "elements": [
+                    {
+                        "name": "salesforceInstanceUrl",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Salesforce Instance URL",
+                        "toolTip": "Your Salesforce URL (e.g., https://yourorg.my.salesforce.com)",
+                        "placeholder": "https://yourorg.my.salesforce.com",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^https:\\/\\/[a-zA-Z0-9][a-zA-Z0-9-]*\\.(my\\.)?salesforce\\.com\\/?$",
+                            "validationMessage": "Must be a valid Salesforce URL (e.g., https://yourorg.my.salesforce.com)"
+                        }
+                    },
+                    {
+                        "name": "salesforceClientId",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "OAuth Client ID",
+                        "toolTip": "Consumer Key from Salesforce Connected App",
+                        "placeholder": "Enter your Consumer Key",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-zA-Z0-9._-]{15,}$",
+                            "validationMessage": "Client ID must be at least 15 alphanumeric characters"
+                        }
+                    },
+                    {
+                        "name": "salesforceClientSecret",
+                        "type": "Microsoft.Common.PasswordBox",
+                        "label": {
+                            "password": "OAuth Client Secret",
+                            "confirmPassword": "Confirm Client Secret"
+                        },
+                        "toolTip": "Consumer Secret from Salesforce Connected App",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^.{12,}$",
+                            "validationMessage": "Client Secret must be at least 12 characters"
+                        },
+                        "options": {
+                            "hideConfirmation": false
+                        }
+                    },
+                    {
+                        "name": "salesforceSourceObject",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Source Object API Name",
+                        "toolTip": "Salesforce object containing call reports (API name ending in __c for custom objects)",
+                        "defaultValue": "callreport__c",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-zA-Z][a-zA-Z0-9_]*(__c)?$",
+                            "validationMessage": "Must be a valid Salesforce object API name (e.g., Account, callreport__c)"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "settings",
+                "label": "Settings",
+                "elements": [
+                    {
+                        "name": "aiModel",
+                        "type": "Microsoft.Common.DropDown",
+                        "label": "AI Model",
+                        "toolTip": "OpenAI model for analysis",
+                        "defaultValue": "gpt-5-nano",
+                        "constraints": {
+                            "required": true,
+                            "allowedValues": [
+                                { "label": "GPT-5 Nano (Recommended)", "value": "gpt-5-nano" },
+                                { "label": "GPT-5 Mini", "value": "gpt-5-mini" },
+                                { "label": "GPT-4o Mini", "value": "gpt-4o-mini" },
+                                { "label": "GPT-4o", "value": "gpt-4o" }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "pricingTier",
+                        "type": "Microsoft.Common.DropDown",
+                        "label": "Pricing Tier",
+                        "toolTip": "Choose based on processing volume",
+                        "defaultValue": "starter",
+                        "constraints": {
+                            "required": true,
+                            "allowedValues": [
+                                { "label": "Starter (B1)", "value": "starter" },
+                                { "label": "Professional (S1)", "value": "professional" },
+                                { "label": "Enterprise (EP1)", "value": "enterprise" }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "batchSize",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Batch Size",
+                        "toolTip": "Records per batch (5-50)",
+                        "defaultValue": "10",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^([5-9]|[1-4][0-9]|50)$",
+                            "validationMessage": "Must be between 5 and 50"
+                        }
+                    }
+                ]
+            }
+        ],
+        "outputs": {
+            "location": "[location()]",
+            "solutionName": "[basics('solutionName')]",
+            "openAiLocation": "[basics('openAiLocation')]",
+            "salesforceInstanceUrl": "[steps('salesforceConfig').salesforceInstanceUrl]",
+            "salesforceClientId": "[steps('salesforceConfig').salesforceClientId]",
+            "salesforceClientSecret": "[steps('salesforceConfig').salesforceClientSecret]",
+            "salesforceSourceObject": "[steps('salesforceConfig').salesforceSourceObject]",
+            "aiModel": "[steps('settings').aiModel]",
+            "pricingTier": "[steps('settings').pricingTier]",
+            "batchSize": "[int(steps('settings').batchSize)]"
+        }
+    }
+}

@@ -1,0 +1,14 @@
+# Bicep build artifacts
+*.bicep
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local testing
+test-parameters.json
+local-deployment/

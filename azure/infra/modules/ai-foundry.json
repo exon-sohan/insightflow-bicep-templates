@@ -1,0 +1,129 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "4070421258360918037"
+    }
+  },
+  "parameters": {
+    "aiProjectName": {
+      "type": "string",
+      "metadata": {
+        "description": "AI Project name"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location for resources"
+      }
+    },
+    "aiModel": {
+      "type": "string",
+      "allowedValues": [
+        "gpt-5-nano",
+        "gpt-5-mini",
+        "gpt-4o-mini",
+        "gpt-4o"
+      ],
+      "metadata": {
+        "description": "AI Model to deploy"
+      }
+    }
+  },
+  "variables": {
+    "modelDeployments": {
+      "gpt-5-nano": {
+        "name": "gpt-5-nano",
+        "model": "gpt-5-nano",
+        "version": "2025-08-07",
+        "capacity": 10,
+        "deploymentType": "GlobalStandard"
+      },
+      "gpt-5-mini": {
+        "name": "gpt-5-mini",
+        "model": "gpt-5-mini",
+        "version": "2025-08-07",
+        "capacity": 10,
+        "deploymentType": "GlobalStandard"
+      },
+      "gpt-4o-mini": {
+        "name": "gpt-4o-mini",
+        "model": "gpt-4o-mini",
+        "version": "2024-07-18",
+        "capacity": 10,
+        "deploymentType": "Standard"
+      },
+      "gpt-4o": {
+        "name": "gpt-4o",
+        "model": "gpt-4o",
+        "version": "2024-08-06",
+        "capacity": 10,
+        "deploymentType": "Standard"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2024-10-01",
+      "name": "[parameters('aiProjectName')]",
+      "location": "[parameters('location')]",
+      "kind": "OpenAI",
+      "sku": {
+        "name": "S0"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "customSubDomainName": "[parameters('aiProjectName')]",
+        "publicNetworkAccess": "Enabled",
+        "networkAcls": {
+          "defaultAction": "Allow"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', parameters('aiProjectName'), variables('modelDeployments')[parameters('aiModel')].name)]",
+      "sku": {
+        "name": "[variables('modelDeployments')[parameters('aiModel')].deploymentType]",
+        "capacity": "[variables('modelDeployments')[parameters('aiModel')].capacity]"
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('modelDeployments')[parameters('aiModel')].model]",
+          "version": "[variables('modelDeployments')[parameters('aiModel')].version]"
+        },
+        "raiPolicyName": "Microsoft.DefaultV2"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "aiProjectName": {
+      "type": "string",
+      "value": "[parameters('aiProjectName')]"
+    },
+    "aiEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName')), '2024-10-01').endpoint]"
+    },
+    "aiPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName')), '2024-10-01', 'full').identity.principalId]"
+    },
+    "deploymentName": {
+      "type": "string",
+      "value": "[variables('modelDeployments')[parameters('aiModel')].name]"
+    }
+  }
+}
