@@ -1,0 +1,168 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "12195699126850952722"
+    }
+  },
+  "parameters": {
+    "vnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Network name"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location for resources"
+      }
+    },
+    "vnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16",
+      "metadata": {
+        "description": "Virtual Network address prefix"
+      }
+    },
+    "functionSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.1.0/24",
+      "metadata": {
+        "description": "Subnet for Function App VNet Integration"
+      }
+    },
+    "privateEndpointSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.2.0/24",
+      "metadata": {
+        "description": "Subnet for Private Endpoints"
+      }
+    },
+    "dataFactorySubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.3.0/24",
+      "metadata": {
+        "description": "Subnet for Data Factory (if using managed VNet)"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-04-01",
+      "name": "[parameters('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnetAddressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "function-integration-subnet",
+            "properties": {
+              "addressPrefix": "[parameters('functionSubnetPrefix')]",
+              "delegations": [
+                {
+                  "name": "delegation",
+                  "properties": {
+                    "serviceName": "Microsoft.Web/serverFarms"
+                  }
+                }
+              ],
+              "serviceEndpoints": [
+                {
+                  "service": "Microsoft.Storage"
+                },
+                {
+                  "service": "Microsoft.KeyVault"
+                }
+              ]
+            }
+          },
+          {
+            "name": "private-endpoint-subnet",
+            "properties": {
+              "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]",
+              "privateEndpointNetworkPolicies": "Disabled",
+              "privateLinkServiceNetworkPolicies": "Enabled"
+            }
+          },
+          {
+            "name": "datafactory-subnet",
+            "properties": {
+              "addressPrefix": "[parameters('dataFactorySubnetPrefix')]",
+              "serviceEndpoints": [
+                {
+                  "service": "Microsoft.Storage"
+                },
+                {
+                  "service": "Microsoft.KeyVault"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-04-01",
+      "name": "[format('{0}-function-nsg', parameters('vnetName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "AllowHTTPS",
+            "properties": {
+              "priority": 100,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2023-04-01",
+      "name": "[format('{0}-pe-nsg', parameters('vnetName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": []
+      }
+    }
+  ],
+  "outputs": {
+    "vnetId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+    },
+    "vnetName": {
+      "type": "string",
+      "value": "[parameters('vnetName')]"
+    },
+    "functionSubnetId": {
+      "type": "string",
+      "value": "[format('{0}/subnets/function-integration-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+    },
+    "privateEndpointSubnetId": {
+      "type": "string",
+      "value": "[format('{0}/subnets/private-endpoint-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+    },
+    "dataFactorySubnetId": {
+      "type": "string",
+      "value": "[format('{0}/subnets/datafactory-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+    }
+  }
+}

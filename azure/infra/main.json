@@ -1,0 +1,1942 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "7204428200343170830"
+    }
+  },
+  "parameters": {
+    "solutionName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 15,
+      "metadata": {
+        "description": "Solution name prefix (lowercase, no spaces)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "openAiLocation": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Azure region for OpenAI (may differ from main location due to model availability)"
+      }
+    },
+    "salesforceInstanceUrl": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Salesforce Instance URL"
+      }
+    },
+    "salesforceClientId": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Salesforce OAuth Client ID"
+      }
+    },
+    "salesforceClientSecret": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Salesforce OAuth Client Secret"
+      }
+    },
+    "salesforceSourceObject": {
+      "type": "string",
+      "defaultValue": "callreport__c",
+      "metadata": {
+        "description": "Salesforce source object API name"
+      }
+    },
+    "salesforceApiVersion": {
+      "type": "string",
+      "defaultValue": "60.0",
+      "metadata": {
+        "description": "Salesforce API version"
+      }
+    },
+    "salesforceQuery": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom SOQL query (optional)"
+      }
+    },
+    "pricingTier": {
+      "type": "string",
+      "defaultValue": "starter",
+      "allowedValues": [
+        "starter"
+      ],
+      "metadata": {
+        "description": "Pricing tier"
+      }
+    },
+    "aiModel": {
+      "type": "string",
+      "defaultValue": "gpt-5-nano",
+      "allowedValues": [
+        "gpt-5-nano",
+        "gpt-4o-nano",
+        "gpt-4o-mini",
+        "gpt-4o"
+      ],
+      "metadata": {
+        "description": "AI Model selection"
+      }
+    },
+    "batchSize": {
+      "type": "int",
+      "defaultValue": 10,
+      "minValue": 5,
+      "maxValue": 50,
+      "metadata": {
+        "description": "Batch processing size"
+      }
+    },
+    "enablePrivateNetworking": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable private networking for Function App and Azure OpenAI (Data Factory remains public)"
+      }
+    }
+  },
+  "variables": {
+    "uniqueSuffix": "[uniqueString(resourceGroup().id, parameters('solutionName'))]",
+    "storageAccountName": "[toLower(format('{0}{1}', parameters('solutionName'), variables('uniqueSuffix')))]",
+    "functionAppName": "[format('{0}-func-{1}', parameters('solutionName'), variables('uniqueSuffix'))]",
+    "keyVaultName": "[format('{0}-kv-{1}', parameters('solutionName'), variables('uniqueSuffix'))]",
+    "dataFactoryName": "[format('{0}-adf-{1}', parameters('solutionName'), variables('uniqueSuffix'))]",
+    "aiProjectName": "[format('{0}-ai-{1}', parameters('solutionName'), variables('uniqueSuffix'))]",
+    "appInsightsName": "[format('{0}-insights-{1}', parameters('solutionName'), variables('uniqueSuffix'))]",
+    "hostingPlanName": "[format('{0}-plan-{1}', parameters('solutionName'), variables('uniqueSuffix'))]",
+    "vnetName": "[format('{0}-vnet-{1}', parameters('solutionName'), variables('uniqueSuffix'))]",
+    "tierConfig": {
+      "starter": {
+        "functionSku": "B1",
+        "recordLimit": 1000,
+        "timeout": 300
+      },
+      "professional": {
+        "functionSku": "S1",
+        "recordLimit": 10000,
+        "timeout": 1800
+      },
+      "enterprise": {
+        "functionSku": "EP1",
+        "recordLimit": -1,
+        "timeout": 3600
+      }
+    },
+    "dataFactoryContributorRoleId": "673868aa-7521-48a0-acc6-0f60742d39f5",
+    "cognitiveServicesOpenAIUserRoleId": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd"
+  },
+  "resources": {
+    "dataFactoryResource": {
+      "existing": true,
+      "type": "Microsoft.DataFactory/factories",
+      "apiVersion": "2018-06-01",
+      "name": "[variables('dataFactoryName')]",
+      "dependsOn": [
+        "dataFactory"
+      ]
+    },
+    "functionAppDataFactoryAccess": {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.DataFactory/factories/{0}', variables('dataFactoryName'))]",
+      "name": "[guid(resourceGroup().id, variables('dataFactoryName'), variables('functionAppName'), variables('dataFactoryContributorRoleId'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('dataFactoryContributorRoleId'))]",
+        "principalId": "[reference('functions').outputs.functionAppPrincipalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "dataFactory",
+        "functions"
+      ]
+    },
+    "openAiResource": {
+      "existing": true,
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2024-10-01",
+      "name": "[variables('aiProjectName')]",
+      "dependsOn": [
+        "azureOpenAI"
+      ]
+    },
+    "functionAppOpenAIAccess": {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.CognitiveServices/accounts/{0}', variables('aiProjectName'))]",
+      "name": "[guid(resourceGroup().id, variables('aiProjectName'), variables('functionAppName'), variables('cognitiveServicesOpenAIUserRoleId'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cognitiveServicesOpenAIUserRoleId'))]",
+        "principalId": "[reference('functions').outputs.functionAppPrincipalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "azureOpenAI",
+        "functions"
+      ]
+    },
+    "network": {
+      "condition": "[parameters('enablePrivateNetworking')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "network-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vnetName": {
+            "value": "[variables('vnetName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "12195699126850952722"
+            }
+          },
+          "parameters": {
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Network name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for resources"
+              }
+            },
+            "vnetAddressPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/16",
+              "metadata": {
+                "description": "Virtual Network address prefix"
+              }
+            },
+            "functionSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.1.0/24",
+              "metadata": {
+                "description": "Subnet for Function App VNet Integration"
+              }
+            },
+            "privateEndpointSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.2.0/24",
+              "metadata": {
+                "description": "Subnet for Private Endpoints"
+              }
+            },
+            "dataFactorySubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.3.0/24",
+              "metadata": {
+                "description": "Subnet for Data Factory (if using managed VNet)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-04-01",
+              "name": "[parameters('vnetName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('vnetAddressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "function-integration-subnet",
+                    "properties": {
+                      "addressPrefix": "[parameters('functionSubnetPrefix')]",
+                      "delegations": [
+                        {
+                          "name": "delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.Web/serverFarms"
+                          }
+                        }
+                      ],
+                      "serviceEndpoints": [
+                        {
+                          "service": "Microsoft.Storage"
+                        },
+                        {
+                          "service": "Microsoft.KeyVault"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "private-endpoint-subnet",
+                    "properties": {
+                      "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]",
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "datafactory-subnet",
+                    "properties": {
+                      "addressPrefix": "[parameters('dataFactorySubnetPrefix')]",
+                      "serviceEndpoints": [
+                        {
+                          "service": "Microsoft.Storage"
+                        },
+                        {
+                          "service": "Microsoft.KeyVault"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-04-01",
+              "name": "[format('{0}-function-nsg', parameters('vnetName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowHTTPS",
+                    "properties": {
+                      "priority": 100,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "443",
+                      "sourceAddressPrefix": "*",
+                      "destinationAddressPrefix": "*"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-04-01",
+              "name": "[format('{0}-pe-nsg', parameters('vnetName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "securityRules": []
+              }
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+            },
+            "vnetName": {
+              "type": "string",
+              "value": "[parameters('vnetName')]"
+            },
+            "functionSubnetId": {
+              "type": "string",
+              "value": "[format('{0}/subnets/function-integration-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "value": "[format('{0}/subnets/private-endpoint-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+            },
+            "dataFactorySubnetId": {
+              "type": "string",
+              "value": "[format('{0}/subnets/datafactory-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storage-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[take(variables('storageAccountName'), 24)]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "2633524769895621644"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 24,
+              "metadata": {
+                "description": "Storage account name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot",
+                "supportsHttpsTrafficOnly": true,
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "deleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                },
+                "containerDeleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'datasets')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'output')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'summaries')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'sf-sync-status')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            },
+            "storageAccountId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            },
+            "blobEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.blob]"
+            }
+          }
+        }
+      }
+    },
+    "keyVault": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "keyvault-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "keyVaultName": {
+            "value": "[take(variables('keyVaultName'), 24)]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "salesforceInstanceUrl": {
+            "value": "[parameters('salesforceInstanceUrl')]"
+          },
+          "salesforceClientId": {
+            "value": "[parameters('salesforceClientId')]"
+          },
+          "salesforceClientSecret": {
+            "value": "[parameters('salesforceClientSecret')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "9022303824237520501"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 24,
+              "metadata": {
+                "description": "Key Vault name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for resources"
+              }
+            },
+            "salesforceInstanceUrl": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Salesforce Instance URL"
+              }
+            },
+            "salesforceClientId": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Salesforce OAuth Client ID"
+              }
+            },
+            "salesforceClientSecret": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Salesforce OAuth Client Secret"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "tenantId": "[subscription().tenantId]",
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": true,
+                "enableRbacAuthorization": true,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 90,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'SalesforceInstanceUrl')]",
+              "properties": {
+                "value": "[parameters('salesforceInstanceUrl')]",
+                "contentType": "text/plain"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'SalesforceClientId')]",
+              "properties": {
+                "value": "[parameters('salesforceClientId')]",
+                "contentType": "text/plain"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'SalesforceClientSecret')]",
+              "properties": {
+                "value": "[parameters('salesforceClientSecret')]",
+                "contentType": "text/plain"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "keyVaultName": {
+              "type": "string",
+              "value": "[parameters('keyVaultName')]"
+            },
+            "keyVaultId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+            }
+          }
+        }
+      }
+    },
+    "appInsights": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "appinsights-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "appInsightsName": {
+            "value": "[variables('appInsightsName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "12349836829614315037"
+            }
+          },
+          "parameters": {
+            "appInsightsName": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}-workspace', parameters('appInsightsName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30,
+                "features": {
+                  "enableLogAccessUsingOnlyResourcePermissions": true
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[parameters('appInsightsName')]",
+              "location": "[parameters('location')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "Flow_Type": "Bluefield",
+                "Request_Source": "rest",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]",
+                "IngestionMode": "LogAnalytics",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "appInsightsName": {
+              "type": "string",
+              "value": "[parameters('appInsightsName')]"
+            },
+            "appInsightsId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/components', parameters('appInsightsName'))]"
+            },
+            "connectionString": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
+            }
+          }
+        }
+      }
+    },
+    "functions": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "functions-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "functionAppName": {
+            "value": "[variables('functionAppName')]"
+          },
+          "hostingPlanName": {
+            "value": "[variables('hostingPlanName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "storageAccountName": {
+            "value": "[reference('storage').outputs.storageAccountName.value]"
+          },
+          "storageAccountId": {
+            "value": "[reference('storage').outputs.storageAccountId.value]"
+          },
+          "keyVaultUri": {
+            "value": "[reference('keyVault').outputs.keyVaultUri.value]"
+          },
+          "appInsightsConnectionString": {
+            "value": "[reference('appInsights').outputs.connectionString.value]"
+          },
+          "aiModel": {
+            "value": "[parameters('aiModel')]"
+          },
+          "aiProjectEndpoint": {
+            "value": "[reference('azureOpenAI').outputs.aiEndpoint.value]"
+          },
+          "batchSize": {
+            "value": "[parameters('batchSize')]"
+          },
+          "skuName": {
+            "value": "[variables('tierConfig')[parameters('pricingTier')].functionSku]"
+          },
+          "dataFactoryName": {
+            "value": "[variables('dataFactoryName')]"
+          },
+          "vnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('network').outputs.vnetId.value), createObject('value', ''))]",
+          "vnetIntegrationSubnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('network').outputs.functionSubnetId.value), createObject('value', ''))]",
+          "enableVnetIntegration": {
+            "value": "[parameters('enablePrivateNetworking')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "5449152766650622434"
+            }
+          },
+          "parameters": {
+            "functionAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App name"
+              }
+            },
+            "hostingPlanName": {
+              "type": "string",
+              "metadata": {
+                "description": "Hosting Plan name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for resources"
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account name"
+              }
+            },
+            "storageAccountId": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account resource ID"
+              }
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault URI"
+              }
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights Connection String"
+              }
+            },
+            "aiModel": {
+              "type": "string",
+              "metadata": {
+                "description": "AI Model to use"
+              }
+            },
+            "batchSize": {
+              "type": "int",
+              "metadata": {
+                "description": "Batch processing size"
+              }
+            },
+            "skuName": {
+              "type": "string",
+              "allowedValues": [
+                "Y1",
+                "EP1",
+                "EP2",
+                "EP3",
+                "B1",
+                "S1"
+              ],
+              "metadata": {
+                "description": "Function App SKU"
+              }
+            },
+            "dataFactoryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Data Factory name for pipeline triggers"
+              }
+            },
+            "aiProjectEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure AI Project Endpoint"
+              }
+            },
+            "functionsPackageUrl": {
+              "type": "string",
+              "defaultValue": "https://d2thmobgs2c8at.cloudfront.net/v1.0.0/functions.zip",
+              "metadata": {
+                "description": "URL for functions package (WEBSITE_RUN_FROM_PACKAGE)"
+              }
+            },
+            "subscriptionId": {
+              "type": "string",
+              "defaultValue": "[subscription().subscriptionId]",
+              "metadata": {
+                "description": "Subscription ID for Data Factory API calls"
+              }
+            },
+            "resourceGroupName": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().name]",
+              "metadata": {
+                "description": "Resource Group name"
+              }
+            },
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Network ID for VNet Integration"
+              }
+            },
+            "vnetIntegrationSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet ID for VNet Integration"
+              }
+            },
+            "enableVnetIntegration": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable VNet Integration and restrict public access (default: true)"
+              }
+            }
+          },
+          "variables": {
+            "isConsumptionPlan": "[equals(parameters('skuName'), 'Y1')]",
+            "isElasticPlan": "[startsWith(parameters('skuName'), 'EP')]",
+            "skuTier": "[if(variables('isConsumptionPlan'), 'Dynamic', if(variables('isElasticPlan'), 'ElasticPremium', if(equals(parameters('skuName'), 'B1'), 'Basic', 'Standard')))]",
+            "storageBlobDataContributorRoleId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('hostingPlanName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[parameters('skuName')]",
+                "tier": "[variables('skuTier')]"
+              },
+              "properties": {
+                "reserved": false,
+                "maximumElasticWorkerCount": "[if(variables('isElasticPlan'), 20, if(variables('isConsumptionPlan'), 1, 0))]"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('functionAppName')]",
+              "location": "[parameters('location')]",
+              "kind": "functionapp",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]",
+                "httpsOnly": true,
+                "publicNetworkAccess": "[if(parameters('enableVnetIntegration'), 'Disabled', 'Enabled')]",
+                "vnetRouteAllEnabled": "[parameters('enableVnetIntegration')]",
+                "siteConfig": {
+                  "vnetRouteAllEnabled": "[parameters('enableVnetIntegration')]",
+                  "nodeVersion": "~20",
+                  "ftpsState": "Disabled",
+                  "minTlsVersion": "1.2",
+                  "cors": {
+                    "allowedOrigins": [
+                      "https://*.salesforce.com",
+                      "https://*.force.com",
+                      "https://*.my.salesforce.com"
+                    ],
+                    "supportCredentials": true
+                  },
+                  "appSettings": [
+                    {
+                      "name": "AzureWebJobsStorage",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTSHARE",
+                      "value": "[toLower(parameters('functionAppName'))]"
+                    },
+                    {
+                      "name": "AZURE_STORAGE_ACCOUNT_NAME",
+                      "value": "[parameters('storageAccountName')]"
+                    },
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~4"
+                    },
+                    {
+                      "name": "WEBSITE_RUN_FROM_PACKAGE",
+                      "value": "[parameters('functionsPackageUrl')]"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "node"
+                    },
+                    {
+                      "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                      "value": "~20"
+                    },
+                    {
+                      "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                      "value": "[parameters('appInsightsConnectionString')]"
+                    },
+                    {
+                      "name": "SF_INSTANCE_URL",
+                      "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceInstanceUrl)', split(parameters('keyVaultUri'), '/')[2])]"
+                    },
+                    {
+                      "name": "SF_CLIENT_ID",
+                      "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceClientId)', split(parameters('keyVaultUri'), '/')[2])]"
+                    },
+                    {
+                      "name": "SF_CLIENT_SECRET",
+                      "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceClientSecret)', split(parameters('keyVaultUri'), '/')[2])]"
+                    },
+                    {
+                      "name": "AI_MODEL",
+                      "value": "[parameters('aiModel')]"
+                    },
+                    {
+                      "name": "AZURE_AI_PROJECT_ENDPOINT",
+                      "value": "[parameters('aiProjectEndpoint')]"
+                    },
+                    {
+                      "name": "BATCH_SIZE",
+                      "value": "[string(parameters('batchSize'))]"
+                    },
+                    {
+                      "name": "INPUT_CONTAINER",
+                      "value": "datasets"
+                    },
+                    {
+                      "name": "OUTPUT_CONTAINER",
+                      "value": "output"
+                    },
+                    {
+                      "name": "SUMMARIES_CONTAINER",
+                      "value": "summaries"
+                    },
+                    {
+                      "name": "SYNC_STATUS_CONTAINER",
+                      "value": "sf-sync-status"
+                    },
+                    {
+                      "name": "AZURE_SUBSCRIPTION_ID",
+                      "value": "[parameters('subscriptionId')]"
+                    },
+                    {
+                      "name": "AZURE_RESOURCE_GROUP",
+                      "value": "[parameters('resourceGroupName')]"
+                    },
+                    {
+                      "name": "DATA_FACTORY_NAME",
+                      "value": "[parameters('dataFactoryName')]"
+                    },
+                    {
+                      "name": "PIPELINE_NAME",
+                      "value": "SalesforceCallReportPipeline"
+                    }
+                  ],
+                  "functionAppScaleLimit": "[if(variables('isConsumptionPlan'), 200, if(variables('isElasticPlan'), 20, 0))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('functionAppName'), 'web')]",
+              "properties": {
+                "functionAppScaleLimit": "[if(variables('isConsumptionPlan'), 200, if(variables('isElasticPlan'), 20, 0))]",
+                "use32BitWorkerProcess": false,
+                "netFrameworkVersion": "v6.0"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "name": "[guid(parameters('storageAccountId'), resourceId('Microsoft.Web/sites', parameters('functionAppName')), variables('storageBlobDataContributorRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableVnetIntegration')]",
+              "type": "Microsoft.Web/sites/networkConfig",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('functionAppName'), 'virtualNetwork')]",
+              "properties": {
+                "subnetResourceId": "[parameters('vnetIntegrationSubnetId')]",
+                "swiftSupported": true
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "functionAppName": {
+              "type": "string",
+              "value": "[parameters('functionAppName')]"
+            },
+            "functionAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+            },
+            "functionAppUrl": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01').defaultHostName]"
+            },
+            "functionAppPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "appInsights",
+        "azureOpenAI",
+        "keyVault",
+        "network",
+        "storage"
+      ]
+    },
+    "keyVaultAccess": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "keyvault-access-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "keyVaultName": {
+            "value": "[reference('keyVault').outputs.keyVaultName.value]"
+          },
+          "principalId": {
+            "value": "[reference('functions').outputs.functionAppPrincipalId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "15334945002391445943"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name"
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal ID to grant access"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.KeyVault/vaults/{0}', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('principalId'), 'Key Vault Secrets User')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "functions",
+        "keyVault"
+      ]
+    },
+    "dataFactory": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "datafactory-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "dataFactoryName": {
+            "value": "[variables('dataFactoryName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "storageAccountName": {
+            "value": "[reference('storage').outputs.storageAccountName.value]"
+          },
+          "storageAccountId": {
+            "value": "[reference('storage').outputs.storageAccountId.value]"
+          },
+          "keyVaultUri": {
+            "value": "[reference('keyVault').outputs.keyVaultUri.value]"
+          },
+          "salesforceSourceObject": {
+            "value": "[parameters('salesforceSourceObject')]"
+          },
+          "salesforceApiVersion": {
+            "value": "[parameters('salesforceApiVersion')]"
+          },
+          "salesforceQuery": {
+            "value": "[parameters('salesforceQuery')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "11387701433563298401"
+            }
+          },
+          "parameters": {
+            "dataFactoryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Data Factory name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for resources"
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account name"
+              }
+            },
+            "storageAccountId": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account resource ID"
+              }
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault URI"
+              }
+            },
+            "salesforceSourceObject": {
+              "type": "string",
+              "metadata": {
+                "description": "Salesforce source object API name"
+              }
+            },
+            "salesforceApiVersion": {
+              "type": "string",
+              "defaultValue": "60.0",
+              "metadata": {
+                "description": "Salesforce API version"
+              }
+            },
+            "salesforceQuery": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Custom SOQL query (optional)"
+              }
+            }
+          },
+          "variables": {
+            "storageBlobDataContributorRoleId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.DataFactory/factories",
+              "apiVersion": "2018-06-01",
+              "name": "[parameters('dataFactoryName')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "publicNetworkAccess": "Enabled"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "name": "[guid(parameters('storageAccountId'), resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName')), variables('storageBlobDataContributorRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName')), '2018-06-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/linkedservices",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'AzureBlobStorage')]",
+              "properties": {
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                  "serviceEndpoint": "[format('https://{0}.blob.{1}', parameters('storageAccountName'), environment().suffixes.storage)]",
+                  "accountKind": "StorageV2"
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(parameters('storageAccountId'), resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName')), variables('storageBlobDataContributorRoleId')))]",
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/linkedservices",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'AzureKeyVault')]",
+              "properties": {
+                "type": "AzureKeyVault",
+                "typeProperties": {
+                  "baseUrl": "[parameters('keyVaultUri')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/linkedservices",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'Salesforce')]",
+              "properties": {
+                "type": "SalesforceV2",
+                "typeProperties": {
+                  "environmentUrl": {
+                    "type": "AzureKeyVaultSecret",
+                    "store": {
+                      "referenceName": "AzureKeyVault",
+                      "type": "LinkedServiceReference"
+                    },
+                    "secretName": "SalesforceInstanceUrl"
+                  },
+                  "authenticationType": "OAuth2ClientCredentials",
+                  "clientId": {
+                    "type": "AzureKeyVaultSecret",
+                    "store": {
+                      "referenceName": "AzureKeyVault",
+                      "type": "LinkedServiceReference"
+                    },
+                    "secretName": "SalesforceClientId"
+                  },
+                  "clientSecret": {
+                    "type": "AzureKeyVaultSecret",
+                    "store": {
+                      "referenceName": "AzureKeyVault",
+                      "type": "LinkedServiceReference"
+                    },
+                    "secretName": "SalesforceClientSecret"
+                  },
+                  "apiVersion": "[parameters('salesforceApiVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+                "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'AzureKeyVault')]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/datasets",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'SalesforceCallReports')]",
+              "properties": {
+                "linkedServiceName": {
+                  "referenceName": "Salesforce",
+                  "type": "LinkedServiceReference"
+                },
+                "type": "SalesforceV2Object",
+                "typeProperties": {
+                  "objectApiName": "[parameters('salesforceSourceObject')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+                "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'Salesforce')]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/datasets",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'BlobDataset')]",
+              "properties": {
+                "linkedServiceName": {
+                  "referenceName": "AzureBlobStorage",
+                  "type": "LinkedServiceReference"
+                },
+                "type": "Json",
+                "typeProperties": {
+                  "location": {
+                    "type": "AzureBlobStorageLocation",
+                    "container": "datasets",
+                    "fileName": {
+                      "value": "@concat('callreports_', formatDateTime(utcnow(), 'yyyyMMdd_HHmmss'), '.json')",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'AzureBlobStorage')]",
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/pipelines",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'SalesforceCallReportPipeline')]",
+              "properties": {
+                "activities": [
+                  {
+                    "name": "CopyCallReportsToBlob",
+                    "type": "Copy",
+                    "typeProperties": {
+                      "source": {
+                        "type": "SalesforceV2Source",
+                        "SOQLQuery": {
+                          "value": "@concat('SELECT Id, Name, calldetails__c, callhighlights__c, Description__c, Phone__c, Email__c, Status__c, CreatedDate FROM ', pipeline().parameters.sourceObject, ' WHERE CreatedDate >= ', pipeline().parameters.startDate)",
+                          "type": "Expression"
+                        }
+                      },
+                      "sink": {
+                        "type": "JsonSink",
+                        "storeSettings": {
+                          "type": "AzureBlobStorageWriteSettings"
+                        },
+                        "formatSettings": {
+                          "type": "JsonWriteSettings",
+                          "filePattern": "arrayOfObjects"
+                        }
+                      }
+                    },
+                    "inputs": [
+                      {
+                        "referenceName": "SalesforceCallReports",
+                        "type": "DatasetReference"
+                      }
+                    ],
+                    "outputs": [
+                      {
+                        "referenceName": "BlobDataset",
+                        "type": "DatasetReference"
+                      }
+                    ]
+                  }
+                ],
+                "parameters": {
+                  "sourceObject": {
+                    "type": "String",
+                    "defaultValue": "[parameters('salesforceSourceObject')]"
+                  },
+                  "startDate": {
+                    "type": "String",
+                    "defaultValue": "LAST_N_DAYS:30"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'BlobDataset')]",
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+                "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'SalesforceCallReports')]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/triggers",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'DailyExtractionTrigger')]",
+              "properties": {
+                "type": "ScheduleTrigger",
+                "typeProperties": {
+                  "recurrence": {
+                    "frequency": "Day",
+                    "interval": 1,
+                    "startTime": "2024-01-01T02:00:00Z",
+                    "timeZone": "UTC"
+                  }
+                },
+                "pipelines": [
+                  {
+                    "pipelineReference": {
+                      "referenceName": "SalesforceCallReportPipeline",
+                      "type": "PipelineReference"
+                    },
+                    "parameters": {
+                      "sourceObject": "[parameters('salesforceSourceObject')]",
+                      "startDate": "YESTERDAY"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+                "[resourceId('Microsoft.DataFactory/factories/pipelines', parameters('dataFactoryName'), 'SalesforceCallReportPipeline')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "dataFactoryName": {
+              "type": "string",
+              "value": "[parameters('dataFactoryName')]"
+            },
+            "dataFactoryId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+            },
+            "dataFactoryPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName')), '2018-06-01', 'full').identity.principalId]"
+            },
+            "pipelineName": {
+              "type": "string",
+              "value": "SalesforceCallReportPipeline"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "keyVault",
+        "storage"
+      ]
+    },
+    "keyVaultAccessAdf": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "keyvault-access-adf-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "keyVaultName": {
+            "value": "[reference('keyVault').outputs.keyVaultName.value]"
+          },
+          "principalId": {
+            "value": "[reference('dataFactory').outputs.dataFactoryPrincipalId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "15334945002391445943"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name"
+              }
+            },
+            "principalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal ID to grant access"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.KeyVault/vaults/{0}', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('principalId'), 'Key Vault Secrets User')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+                "principalId": "[parameters('principalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "dataFactory",
+        "keyVault"
+      ]
+    },
+    "azureOpenAI": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "azure-openai-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "aiProjectName": {
+            "value": "[variables('aiProjectName')]"
+          },
+          "location": {
+            "value": "[parameters('openAiLocation')]"
+          },
+          "aiModel": {
+            "value": "[parameters('aiModel')]"
+          },
+          "vnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('network').outputs.vnetId.value), createObject('value', ''))]",
+          "privateEndpointSubnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('network').outputs.privateEndpointSubnetId.value), createObject('value', ''))]",
+          "enablePrivateEndpoint": {
+            "value": "[parameters('enablePrivateNetworking')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "12068521096643718879"
+            }
+          },
+          "parameters": {
+            "aiProjectName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure OpenAI Service name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for resources"
+              }
+            },
+            "aiModel": {
+              "type": "string",
+              "allowedValues": [
+                "gpt-5-nano",
+                "gpt-4o-nano",
+                "gpt-4o-mini",
+                "gpt-4o"
+              ],
+              "metadata": {
+                "description": "AI Model to deploy"
+              }
+            },
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Network ID for private endpoint"
+              }
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Subnet ID for private endpoint"
+              }
+            },
+            "enablePrivateEndpoint": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable private endpoint (default: true)"
+              }
+            }
+          },
+          "variables": {
+            "modelDeployments": {
+              "gpt-5-nano": {
+                "name": "gpt-5-nano",
+                "model": "gpt-5-nano",
+                "version": "2025-08-07",
+                "capacity": 10,
+                "deploymentType": "GlobalStandard"
+              },
+              "gpt-4o-nano": {
+                "name": "gpt-4o-nano",
+                "model": "gpt-4o-nano",
+                "version": "2024-07-18",
+                "capacity": 10,
+                "deploymentType": "Standard"
+              },
+              "gpt-4o-mini": {
+                "name": "gpt-4o-mini",
+                "model": "gpt-4o-mini",
+                "version": "2024-07-18",
+                "capacity": 10,
+                "deploymentType": "Standard"
+              },
+              "gpt-4o": {
+                "name": "gpt-4o",
+                "model": "gpt-4o",
+                "version": "2024-08-06",
+                "capacity": 10,
+                "deploymentType": "Standard"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2024-10-01",
+              "name": "[parameters('aiProjectName')]",
+              "location": "[parameters('location')]",
+              "kind": "OpenAI",
+              "sku": {
+                "name": "S0"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "customSubDomainName": "[parameters('aiProjectName')]",
+                "publicNetworkAccess": "[if(parameters('enablePrivateEndpoint'), 'Disabled', 'Enabled')]",
+                "networkAcls": {
+                  "defaultAction": "[if(parameters('enablePrivateEndpoint'), 'Deny', 'Allow')]"
+                }
+              }
+            },
+            {
+              "condition": "[parameters('enablePrivateEndpoint')]",
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.cognitiveservices.azure.com",
+              "location": "global"
+            },
+            {
+              "condition": "[parameters('enablePrivateEndpoint')]",
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.cognitiveservices.azure.com', format('{0}-dns-link', parameters('aiProjectName')))]",
+              "location": "global",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]"
+              ]
+            },
+            {
+              "condition": "[parameters('enablePrivateEndpoint')]",
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2023-04-01",
+              "name": "[format('{0}-pe', parameters('aiProjectName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('privateEndpointSubnetId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('{0}-pe-connection', parameters('aiProjectName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName'))]",
+                      "groupIds": [
+                        "account"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enablePrivateEndpoint')]",
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2023-04-01",
+              "name": "[format('{0}/{1}', format('{0}-pe', parameters('aiProjectName')), 'default')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "cognitiveservices-config",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]",
+                "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-pe', parameters('aiProjectName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', parameters('aiProjectName'), variables('modelDeployments')[parameters('aiModel')].name)]",
+              "sku": {
+                "name": "[variables('modelDeployments')[parameters('aiModel')].deploymentType]",
+                "capacity": "[variables('modelDeployments')[parameters('aiModel')].capacity]"
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[variables('modelDeployments')[parameters('aiModel')].model]",
+                  "version": "[variables('modelDeployments')[parameters('aiModel')].version]"
+                },
+                "raiPolicyName": "Microsoft.DefaultV2"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "aiProjectName": {
+              "type": "string",
+              "value": "[parameters('aiProjectName')]"
+            },
+            "aiEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName')), '2024-10-01').endpoint]"
+            },
+            "aiPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName')), '2024-10-01', 'full').identity.principalId]"
+            },
+            "deploymentName": {
+              "type": "string",
+              "value": "[variables('modelDeployments')[parameters('aiModel')].name]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "network"
+      ]
+    }
+  },
+  "outputs": {
+    "functionAppUrl": {
+      "type": "string",
+      "value": "[reference('functions').outputs.functionAppUrl.value]"
+    },
+    "functionAppName": {
+      "type": "string",
+      "value": "[reference('functions').outputs.functionAppName.value]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference('storage').outputs.storageAccountName.value]"
+    },
+    "dataFactoryName": {
+      "type": "string",
+      "value": "[reference('dataFactory').outputs.dataFactoryName.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference('keyVault').outputs.keyVaultName.value]"
+    },
+    "aiProjectEndpoint": {
+      "type": "string",
+      "value": "[reference('azureOpenAI').outputs.aiEndpoint.value]"
+    },
+    "salesforceRemoteSiteUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference('functions').outputs.functionAppUrl.value)]"
+    },
+    "setupInstructionsUrl": {
+      "type": "string",
+      "value": "[format('https://{0}/api/setup-instructions', reference('functions').outputs.functionAppUrl.value)]"
+    },
+    "pricingTier": {
+      "type": "string",
+      "value": "[parameters('pricingTier')]"
+    },
+    "recordLimit": {
+      "type": "int",
+      "value": "[variables('tierConfig')[parameters('pricingTier')].recordLimit]"
+    }
+  }
+}

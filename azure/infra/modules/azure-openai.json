@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "13704801425919501463"
+      "templateHash": "12068521096643718879"
     }
   },
   "parameters": {
@@ -31,6 +31,25 @@
       ],
       "metadata": {
         "description": "AI Model to deploy"
+      }
+    },
+    "vnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Network ID for private endpoint"
+      }
+    },
+    "privateEndpointSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Subnet ID for private endpoint"
+      }
+    },
+    "enablePrivateEndpoint": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable private endpoint (default: true)"
       }
     }
   },
@@ -81,11 +100,80 @@
       },
       "properties": {
         "customSubDomainName": "[parameters('aiProjectName')]",
-        "publicNetworkAccess": "Enabled",
+        "publicNetworkAccess": "[if(parameters('enablePrivateEndpoint'), 'Disabled', 'Enabled')]",
         "networkAcls": {
-          "defaultAction": "Allow"
+          "defaultAction": "[if(parameters('enablePrivateEndpoint'), 'Deny', 'Allow')]"
         }
       }
+    },
+    {
+      "condition": "[parameters('enablePrivateEndpoint')]",
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2020-06-01",
+      "name": "privatelink.cognitiveservices.azure.com",
+      "location": "global"
+    },
+    {
+      "condition": "[parameters('enablePrivateEndpoint')]",
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2020-06-01",
+      "name": "[format('{0}/{1}', 'privatelink.cognitiveservices.azure.com', format('{0}-dns-link', parameters('aiProjectName')))]",
+      "location": "global",
+      "properties": {
+        "registrationEnabled": false,
+        "virtualNetwork": {
+          "id": "[parameters('vnetId')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enablePrivateEndpoint')]",
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2023-04-01",
+      "name": "[format('{0}-pe', parameters('aiProjectName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "subnet": {
+          "id": "[parameters('privateEndpointSubnetId')]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[format('{0}-pe-connection', parameters('aiProjectName'))]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName'))]",
+              "groupIds": [
+                "account"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enablePrivateEndpoint')]",
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2023-04-01",
+      "name": "[format('{0}/{1}', format('{0}-pe', parameters('aiProjectName')), 'default')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "cognitiveservices-config",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.cognitiveservices.azure.com')]",
+        "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-pe', parameters('aiProjectName')))]"
+      ]
     },
     {
       "type": "Microsoft.CognitiveServices/accounts/deployments",

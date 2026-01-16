@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "1497493158687981676"
+      "templateHash": "5449152766650622434"
     }
   },
   "parameters": {
@@ -109,6 +109,25 @@
       "metadata": {
         "description": "Resource Group name"
       }
+    },
+    "vnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Network ID for VNet Integration"
+      }
+    },
+    "vnetIntegrationSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Subnet ID for VNet Integration"
+      }
+    },
+    "enableVnetIntegration": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable VNet Integration and restrict public access (default: true)"
+      }
     }
   },
   "variables": {
@@ -144,7 +163,10 @@
       "properties": {
         "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]",
         "httpsOnly": true,
+        "publicNetworkAccess": "[if(parameters('enableVnetIntegration'), 'Disabled', 'Enabled')]",
+        "vnetRouteAllEnabled": "[parameters('enableVnetIntegration')]",
         "siteConfig": {
+          "vnetRouteAllEnabled": "[parameters('enableVnetIntegration')]",
           "nodeVersion": "~20",
           "ftpsState": "Disabled",
           "minTlsVersion": "1.2",
@@ -279,6 +301,19 @@
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleId'))]",
         "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]",
         "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableVnetIntegration')]",
+      "type": "Microsoft.Web/sites/networkConfig",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', parameters('functionAppName'), 'virtualNetwork')]",
+      "properties": {
+        "subnetResourceId": "[parameters('vnetIntegrationSubnetId')]",
+        "swiftSupported": true
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
