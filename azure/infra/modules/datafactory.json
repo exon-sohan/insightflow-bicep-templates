@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "14227476513187722130"
+      "templateHash": "11387701433563298401"
     }
   },
   "parameters": {
@@ -43,6 +43,20 @@
       "type": "string",
       "metadata": {
         "description": "Salesforce source object API name"
+      }
+    },
+    "salesforceApiVersion": {
+      "type": "string",
+      "defaultValue": "60.0",
+      "metadata": {
+        "description": "Salesforce API version"
+      }
+    },
+    "salesforceQuery": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom SOQL query (optional)"
       }
     }
   },
@@ -138,7 +152,7 @@
             },
             "secretName": "SalesforceClientSecret"
           },
-          "apiVersion": "52.0"
+          "apiVersion": "[parameters('salesforceApiVersion')]"
         }
       },
       "dependsOn": [

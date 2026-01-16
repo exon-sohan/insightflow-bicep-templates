@@ -79,6 +79,18 @@
                         }
                     },
                     {
+                        "name": "salesforceApiVersion",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Salesforce API Version",
+                        "toolTip": "Salesforce API version (e.g., 52.0, 58.0, 60.0)",
+                        "defaultValue": "60.0",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[0-9]{2,3}\\.[0-9]$",
+                            "validationMessage": "Must be a valid API version (e.g., 52.0, 60.0)"
+                        }
+                    },
+                    {
                         "name": "salesforceSourceObject",
                         "type": "Microsoft.Common.TextBox",
                         "label": "Source Object API Name",
@@ -88,6 +100,18 @@
                             "required": true,
                             "regex": "^[a-zA-Z][a-zA-Z0-9_]*(__c)?$",
                             "validationMessage": "Must be a valid Salesforce object API name (e.g., Account, callreport__c)"
+                        }
+                    },
+                    {
+                        "name": "salesforceQuery",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "SOQL Query (Optional)",
+                        "toolTip": "Custom SOQL query to retrieve records. Leave empty to use default query.",
+                        "placeholder": "SELECT Id, Name, Description FROM callreport__c WHERE CreatedDate >= LAST_N_DAYS:30",
+                        "constraints": {
+                            "required": false,
+                            "regex": "^(SELECT\\s+.*)?$",
+                            "validationMessage": "Must be a valid SOQL query starting with SELECT, or leave empty"
                         }
                     }
                 ]
@@ -100,30 +124,15 @@
                         "name": "aiModel",
                         "type": "Microsoft.Common.DropDown",
                         "label": "AI Model",
-                        "toolTip": "OpenAI model for analysis",
+                        "toolTip": "Azure OpenAI model for analysis",
                         "defaultValue": "gpt-5-nano",
                         "constraints": {
                             "required": true,
                             "allowedValues": [
-                                { "label": "GPT-5 Nano (Recommended)", "value": "gpt-5-nano" },
-                                { "label": "GPT-5 Mini", "value": "gpt-5-mini" },
-                                { "label": "GPT-4o Mini", "value": "gpt-4o-mini" },
+                                { "label": "GPT-5-Nano (Fast & Cost-Effective)", "value": "gpt-5-nano" },
+                                { "label": "GPT-4o-Nano", "value": "gpt-4o-nano" },
+                                { "label": "GPT-4o-Mini", "value": "gpt-4o-mini" },
                                 { "label": "GPT-4o", "value": "gpt-4o" }
-                            ]
-                        }
-                    },
-                    {
-                        "name": "pricingTier",
-                        "type": "Microsoft.Common.DropDown",
-                        "label": "Pricing Tier",
-                        "toolTip": "Choose based on processing volume",
-                        "defaultValue": "starter",
-                        "constraints": {
-                            "required": true,
-                            "allowedValues": [
-                                { "label": "Starter (B1)", "value": "starter" },
-                                { "label": "Professional (S1)", "value": "professional" },
-                                { "label": "Enterprise (EP1)", "value": "enterprise" }
                             ]
                         }
                     },
@@ -149,9 +158,11 @@
             "salesforceInstanceUrl": "[steps('salesforceConfig').salesforceInstanceUrl]",
             "salesforceClientId": "[steps('salesforceConfig').salesforceClientId]",
             "salesforceClientSecret": "[steps('salesforceConfig').salesforceClientSecret]",
+            "salesforceApiVersion": "[steps('salesforceConfig').salesforceApiVersion]",
             "salesforceSourceObject": "[steps('salesforceConfig').salesforceSourceObject]",
+            "salesforceQuery": "[steps('salesforceConfig').salesforceQuery]",
             "aiModel": "[steps('settings').aiModel]",
-            "pricingTier": "[steps('settings').pricingTier]",
+            "pricingTier": "starter",
             "batchSize": "[int(steps('settings').batchSize)]"
         }
     }

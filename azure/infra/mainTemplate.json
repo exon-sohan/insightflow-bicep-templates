@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "13283454368346990048"
+      "templateHash": "1094321888797661571"
     }
   },
   "parameters": {
@@ -57,13 +57,25 @@
         "description": "Salesforce source object API name"
       }
     },
+    "salesforceApiVersion": {
+      "type": "string",
+      "defaultValue": "60.0",
+      "metadata": {
+        "description": "Salesforce API version"
+      }
+    },
+    "salesforceQuery": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom SOQL query (optional)"
+      }
+    },
     "pricingTier": {
       "type": "string",
       "defaultValue": "starter",
       "allowedValues": [
-        "starter",
-        "professional",
-        "enterprise"
+        "starter"
       ],
       "metadata": {
         "description": "Pricing tier"
@@ -74,7 +86,7 @@
       "defaultValue": "gpt-5-nano",
       "allowedValues": [
         "gpt-5-nano",
-        "gpt-5-mini",
+        "gpt-4o-nano",
         "gpt-4o-mini",
         "gpt-4o"
       ],
@@ -1007,6 +1019,12 @@
           },
           "salesforceSourceObject": {
             "value": "[parameters('salesforceSourceObject')]"
+          },
+          "salesforceApiVersion": {
+            "value": "[parameters('salesforceApiVersion')]"
+          },
+          "salesforceQuery": {
+            "value": "[parameters('salesforceQuery')]"
           }
         },
         "template": {
@@ -1016,7 +1034,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "14227476513187722130"
+              "templateHash": "11387701433563298401"
             }
           },
           "parameters": {
@@ -1054,6 +1072,20 @@
               "type": "string",
               "metadata": {
                 "description": "Salesforce source object API name"
+              }
+            },
+            "salesforceApiVersion": {
+              "type": "string",
+              "defaultValue": "60.0",
+              "metadata": {
+                "description": "Salesforce API version"
+              }
+            },
+            "salesforceQuery": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Custom SOQL query (optional)"
               }
             }
           },
@@ -1149,7 +1181,7 @@
                     },
                     "secretName": "SalesforceClientSecret"
                   },
-                  "apiVersion": "52.0"
+                  "apiVersion": "[parameters('salesforceApiVersion')]"
                 }
               },
               "dependsOn": [
@@ -1407,7 +1439,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "1805638742625897729"
+              "templateHash": "13704801425919501463"
             }
           },
           "parameters": {
@@ -1427,7 +1459,7 @@
               "type": "string",
               "allowedValues": [
                 "gpt-5-nano",
-                "gpt-5-mini",
+                "gpt-4o-nano",
                 "gpt-4o-mini",
                 "gpt-4o"
               ],
@@ -1445,12 +1477,12 @@
                 "capacity": 10,
                 "deploymentType": "GlobalStandard"
               },
-              "gpt-5-mini": {
-                "name": "gpt-5-mini",
-                "model": "gpt-5-mini",
-                "version": "2025-08-07",
+              "gpt-4o-nano": {
+                "name": "gpt-4o-nano",
+                "model": "gpt-4o-nano",
+                "version": "2024-07-18",
                 "capacity": 10,
-                "deploymentType": "GlobalStandard"
+                "deploymentType": "Standard"
               },
               "gpt-4o-mini": {
                 "name": "gpt-4o-mini",
