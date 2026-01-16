@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "1216135431260785303"
+      "templateHash": "13283454368346990048"
     }
   },
   "parameters": {
@@ -152,7 +152,7 @@
       "apiVersion": "2024-10-01",
       "name": "[variables('aiProjectName')]",
       "dependsOn": [
-        "aiFoundry"
+        "azureOpenAI"
       ]
     },
     "functionAppOpenAIAccess": {
@@ -166,7 +166,7 @@
         "principalType": "ServicePrincipal"
       },
       "dependsOn": [
-        "aiFoundry",
+        "azureOpenAI",
         "functions"
       ]
     },
@@ -593,7 +593,7 @@
             "value": "[parameters('aiModel')]"
           },
           "aiProjectEndpoint": {
-            "value": "[reference('aiFoundry').outputs.aiEndpoint.value]"
+            "value": "[reference('azureOpenAI').outputs.aiEndpoint.value]"
           },
           "batchSize": {
             "value": "[parameters('batchSize')]"
@@ -913,8 +913,8 @@
         }
       },
       "dependsOn": [
-        "aiFoundry",
         "appInsights",
+        "azureOpenAI",
         "keyVault",
         "storage"
       ]
@@ -1380,10 +1380,10 @@
         "keyVault"
       ]
     },
-    "aiFoundry": {
+    "azureOpenAI": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "ai-foundry-deployment",
+      "name": "azure-openai-deployment",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1407,14 +1407,14 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "4070421258360918037"
+              "templateHash": "1805638742625897729"
             }
           },
           "parameters": {
             "aiProjectName": {
               "type": "string",
               "metadata": {
-                "description": "AI Project name"
+                "description": "Azure OpenAI Service name"
               }
             },
             "location": {
@@ -1555,7 +1555,7 @@
     },
     "aiProjectEndpoint": {
       "type": "string",
-      "value": "[reference('aiFoundry').outputs.aiEndpoint.value]"
+      "value": "[reference('azureOpenAI').outputs.aiEndpoint.value]"
     },
     "salesforceRemoteSiteUrl": {
       "type": "string",
