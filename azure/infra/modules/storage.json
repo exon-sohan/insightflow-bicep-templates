@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "5132771849846311834"
+      "templateHash": "2633524769895621644"
     }
   },
   "parameters": {
@@ -39,6 +39,7 @@
         "supportsHttpsTrafficOnly": true,
         "minimumTlsVersion": "TLS1_2",
         "allowBlobPublicAccess": false,
+        "publicNetworkAccess": "Enabled",
         "networkAcls": {
           "defaultAction": "Allow",
           "bypass": "AzureServices"

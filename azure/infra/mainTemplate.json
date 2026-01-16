@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "13573274859411739063"
+      "templateHash": "1216135431260785303"
     }
   },
   "parameters": {
@@ -194,7 +194,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "5132771849846311834"
+              "templateHash": "2633524769895621644"
             }
           },
           "parameters": {
@@ -228,6 +228,7 @@
                 "supportsHttpsTrafficOnly": true,
                 "minimumTlsVersion": "TLS1_2",
                 "allowBlobPublicAccess": false,
+                "publicNetworkAccess": "Enabled",
                 "networkAcls": {
                   "defaultAction": "Allow",
                   "bypass": "AzureServices"
@@ -347,7 +348,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "13112129441477971166"
+              "templateHash": "9022303824237520501"
             }
           },
           "parameters": {
@@ -401,7 +402,8 @@
                 "enabledForTemplateDeployment": true,
                 "enableRbacAuthorization": true,
                 "enableSoftDelete": true,
-                "softDeleteRetentionInDays": 7,
+                "softDeleteRetentionInDays": 90,
+                "publicNetworkAccess": "Enabled",
                 "networkAcls": {
                   "defaultAction": "Allow",
                   "bypass": "AzureServices"
