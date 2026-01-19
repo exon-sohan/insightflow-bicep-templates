@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "7204428200343170830"
+      "templateHash": "16967808950373096451"
     }
   },
   "parameters": {
@@ -75,7 +75,9 @@
       "type": "string",
       "defaultValue": "starter",
       "allowedValues": [
-        "starter"
+        "starter",
+        "professional",
+        "enterprise"
       ],
       "metadata": {
         "description": "Pricing tier"
@@ -109,6 +111,14 @@
       "metadata": {
         "description": "Enable private networking for Function App and Azure OpenAI (Data Factory remains public)"
       }
+    },
+    "functionsPackageUrl": {
+      "type": "string",
+      "metadata": {
+        "marketplaceCompliance": "Must use Azure Blob Storage, not CloudFront or external CDN",
+        "example": "https://yourvendorstorage.blob.core.windows.net/releases/v1.0.0/functions.zip?sp=r&se=2026-12-31T23:59:59Z&sig=...",
+        "description": "Function App package URL (Azure Blob Storage with SAS token)"
+      }
     }
   },
   "variables": {
@@ -123,21 +133,26 @@
     "vnetName": "[format('{0}-vnet-{1}', parameters('solutionName'), variables('uniqueSuffix'))]",
     "tierConfig": {
       "starter": {
-        "functionSku": "B1",
+        "functionSku": "Y1",
         "recordLimit": 1000,
-        "timeout": 300
+        "timeout": 300,
+        "enableVnet": false
       },
       "professional": {
-        "functionSku": "S1",
+        "functionSku": "B1",
         "recordLimit": 10000,
-        "timeout": 1800
+        "timeout": 1800,
+        "enableVnet": true
       },
       "enterprise": {
         "functionSku": "EP1",
         "recordLimit": -1,
-        "timeout": 3600
+        "timeout": 3600,
+        "enableVnet": true
       }
     },
+    "effectiveBatchSize": "[if(equals(parameters('aiModel'), 'gpt-4o'), min(parameters('batchSize'), 5), parameters('batchSize'))]",
+    "effectiveVnetEnabled": "[and(parameters('enablePrivateNetworking'), variables('tierConfig')[parameters('pricingTier')].enableVnet)]",
     "dataFactoryContributorRoleId": "673868aa-7521-48a0-acc6-0f60742d39f5",
     "cognitiveServicesOpenAIUserRoleId": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd"
   },
@@ -191,7 +206,7 @@
       ]
     },
     "network": {
-      "condition": "[parameters('enablePrivateNetworking')]",
+      "condition": "[variables('effectiveVnetEnabled')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "network-deployment",
@@ -402,7 +417,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "2633524769895621644"
+              "templateHash": "2998605365800209553"
             }
           },
           "parameters": {
@@ -503,6 +518,69 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "policy": {
+                  "rules": [
+                    {
+                      "enabled": true,
+                      "name": "tier-and-delete-batch-data",
+                      "type": "Lifecycle",
+                      "definition": {
+                        "actions": {
+                          "baseBlob": {
+                            "tierToCool": {
+                              "daysAfterModificationGreaterThan": 7
+                            },
+                            "delete": {
+                              "daysAfterModificationGreaterThan": 30
+                            }
+                          }
+                        },
+                        "filters": {
+                          "blobTypes": [
+                            "blockBlob"
+                          ],
+                          "prefixMatch": [
+                            "datasets/",
+                            "output/",
+                            "summaries/"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "enabled": true,
+                      "name": "keep-sync-status",
+                      "type": "Lifecycle",
+                      "definition": {
+                        "actions": {
+                          "baseBlob": {
+                            "tierToCool": {
+                              "daysAfterModificationGreaterThan": 30
+                            }
+                          }
+                        },
+                        "filters": {
+                          "blobTypes": [
+                            "blockBlob"
+                          ],
+                          "prefixMatch": [
+                            "sf-sync-status/"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
               ]
             }
           ],
@@ -696,7 +774,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "12349836829614315037"
+              "templateHash": "10602934870423703683"
             }
           },
           "parameters": {
@@ -742,7 +820,8 @@
                 "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]",
                 "IngestionMode": "LogAnalytics",
                 "publicNetworkAccessForIngestion": "Enabled",
-                "publicNetworkAccessForQuery": "Enabled"
+                "publicNetworkAccessForQuery": "Enabled",
+                "SamplingPercentage": 5
               },
               "dependsOn": [
                 "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]"
@@ -804,7 +883,7 @@
             "value": "[reference('azureOpenAI').outputs.aiEndpoint.value]"
           },
           "batchSize": {
-            "value": "[parameters('batchSize')]"
+            "value": "[variables('effectiveBatchSize')]"
           },
           "skuName": {
             "value": "[variables('tierConfig')[parameters('pricingTier')].functionSku]"
@@ -812,10 +891,13 @@
           "dataFactoryName": {
             "value": "[variables('dataFactoryName')]"
           },
-          "vnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('network').outputs.vnetId.value), createObject('value', ''))]",
-          "vnetIntegrationSubnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('network').outputs.functionSubnetId.value), createObject('value', ''))]",
+          "functionsPackageUrl": {
+            "value": "[parameters('functionsPackageUrl')]"
+          },
+          "vnetId": "[if(variables('effectiveVnetEnabled'), createObject('value', reference('network').outputs.vnetId.value), createObject('value', ''))]",
+          "vnetIntegrationSubnetId": "[if(variables('effectiveVnetEnabled'), createObject('value', reference('network').outputs.functionSubnetId.value), createObject('value', ''))]",
           "enableVnetIntegration": {
-            "value": "[parameters('enablePrivateNetworking')]"
+            "value": "[variables('effectiveVnetEnabled')]"
           }
         },
         "template": {
@@ -825,7 +907,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "5449152766650622434"
+              "templateHash": "5961391093682628914"
             }
           },
           "parameters": {
@@ -911,9 +993,10 @@
             },
             "functionsPackageUrl": {
               "type": "string",
-              "defaultValue": "https://d2thmobgs2c8at.cloudfront.net/v1.0.0/functions.zip",
               "metadata": {
-                "description": "URL for functions package (WEBSITE_RUN_FROM_PACKAGE)"
+                "example": "https://yourstorageaccount.blob.core.windows.net/releases/v1.0.0/functions.zip?sp=r&st=2024-01-01T00:00:00Z&se=2026-12-31T23:59:59Z&spr=https&sv=2022-11-02&sr=b&sig=...",
+                "note": "Must be Azure Blob Storage URL with SAS token for Marketplace compliance",
+                "description": "URL for functions package with SAS token (WEBSITE_RUN_FROM_PACKAGE)"
               }
             },
             "subscriptionId": {
@@ -1127,6 +1210,20 @@
               ]
             },
             {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.KeyVault/vaults/{0}', split(parameters('keyVaultUri'), '/')[2])]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', split(parameters('keyVaultUri'), '/')[2]), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'Key Vault Secrets User')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            },
+            {
               "condition": "[parameters('enableVnetIntegration')]",
               "type": "Microsoft.Web/sites/networkConfig",
               "apiVersion": "2023-01-01",
@@ -1166,67 +1263,6 @@
         "keyVault",
         "network",
         "storage"
-      ]
-    },
-    "keyVaultAccess": {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
-      "name": "keyvault-access-deployment",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "keyVaultName": {
-            "value": "[reference('keyVault').outputs.keyVaultName.value]"
-          },
-          "principalId": {
-            "value": "[reference('functions').outputs.functionAppPrincipalId.value]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "15334945002391445943"
-            }
-          },
-          "parameters": {
-            "keyVaultName": {
-              "type": "string",
-              "metadata": {
-                "description": "Key Vault name"
-              }
-            },
-            "principalId": {
-              "type": "string",
-              "metadata": {
-                "description": "Principal ID to grant access"
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Authorization/roleAssignments",
-              "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.KeyVault/vaults/{0}', parameters('keyVaultName'))]",
-              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('principalId'), 'Key Vault Secrets User')]",
-              "properties": {
-                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
-                "principalId": "[parameters('principalId')]",
-                "principalType": "ServicePrincipal"
-              }
-            }
-          ]
-        }
-      },
-      "dependsOn": [
-        "functions",
-        "keyVault"
       ]
     },
     "dataFactory": {
@@ -1668,10 +1704,10 @@
           "aiModel": {
             "value": "[parameters('aiModel')]"
           },
-          "vnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('network').outputs.vnetId.value), createObject('value', ''))]",
-          "privateEndpointSubnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('network').outputs.privateEndpointSubnetId.value), createObject('value', ''))]",
+          "vnetId": "[if(variables('effectiveVnetEnabled'), createObject('value', reference('network').outputs.vnetId.value), createObject('value', ''))]",
+          "privateEndpointSubnetId": "[if(variables('effectiveVnetEnabled'), createObject('value', reference('network').outputs.privateEndpointSubnetId.value), createObject('value', ''))]",
           "enablePrivateEndpoint": {
-            "value": "[parameters('enablePrivateNetworking')]"
+            "value": "[variables('effectiveVnetEnabled')]"
           }
         },
         "template": {
@@ -1681,7 +1717,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "12068521096643718879"
+              "templateHash": "2430656341465239177"
             }
           },
           "parameters": {
@@ -1733,14 +1769,14 @@
             "modelDeployments": {
               "gpt-5-nano": {
                 "name": "gpt-5-nano",
-                "model": "gpt-5-nano",
-                "version": "2025-08-07",
+                "model": "gpt-4o-mini",
+                "version": "2024-07-18",
                 "capacity": 10,
-                "deploymentType": "GlobalStandard"
+                "deploymentType": "Standard"
               },
               "gpt-4o-nano": {
                 "name": "gpt-4o-nano",
-                "model": "gpt-4o-nano",
+                "model": "gpt-4o-mini",
                 "version": "2024-07-18",
                 "capacity": 10,
                 "deploymentType": "Standard"
@@ -1898,10 +1934,6 @@
     }
   },
   "outputs": {
-    "functionAppUrl": {
-      "type": "string",
-      "value": "[reference('functions').outputs.functionAppUrl.value]"
-    },
     "functionAppName": {
       "type": "string",
       "value": "[reference('functions').outputs.functionAppName.value]"
@@ -1918,9 +1950,21 @@
       "type": "string",
       "value": "[reference('keyVault').outputs.keyVaultName.value]"
     },
+    "functionAppUrl": {
+      "type": "string",
+      "value": "[reference('functions').outputs.functionAppUrl.value]"
+    },
     "aiProjectEndpoint": {
       "type": "string",
       "value": "[reference('azureOpenAI').outputs.aiEndpoint.value]"
+    },
+    "triggerPipelineUrl": {
+      "type": "string",
+      "value": "[format('https://{0}/api/trigger-pipeline', reference('functions').outputs.functionAppUrl.value)]"
+    },
+    "healthCheckUrl": {
+      "type": "string",
+      "value": "[format('https://{0}/api/health', reference('functions').outputs.functionAppUrl.value)]"
     },
     "salesforceRemoteSiteUrl": {
       "type": "string",
@@ -1937,6 +1981,22 @@
     "recordLimit": {
       "type": "int",
       "value": "[variables('tierConfig')[parameters('pricingTier')].recordLimit]"
+    },
+    "aiModel": {
+      "type": "string",
+      "value": "[parameters('aiModel')]"
+    },
+    "batchSize": {
+      "type": "int",
+      "value": "[variables('effectiveBatchSize')]"
+    },
+    "nextSteps": {
+      "type": "string",
+      "value": "DEPLOYMENT COMPLETE! Follow these steps to get started:\n\n1. START DATA FACTORY TRIGGER:\n   - Go to Azure Portal → Data Factory: ${dataFactory.outputs.dataFactoryName}\n   - Navigate to Author → Triggers → Start the trigger\n   (Triggers are created in \"Stopped\" state by Azure design)\n\n2. CONFIGURE SALESFORCE REMOTE SITE:\n   - In Salesforce: Setup → Remote Site Settings → New Remote Site\n   - Remote Site URL: ${functions.outputs.functionAppUrl}\n   - Description: \"InsightFlow Azure Function\"\n\n3. TEST THE DEPLOYMENT:\n   - Health Check: ${functions.outputs.functionAppUrl}/api/health\n   - Trigger Pipeline: ${functions.outputs.functionAppUrl}/api/trigger-pipeline\n\n4. VIEW RESOURCES:\n   - Function App: ${functions.outputs.functionAppName}\n   - Storage Account: ${storage.outputs.storageAccountName}\n   - Data Factory: ${dataFactory.outputs.dataFactoryName}\n   - Key Vault: ${keyVault.outputs.keyVaultName}\n\nFor detailed setup instructions, visit: ${functions.outputs.functionAppUrl}/api/setup-instructions\n"
+    },
+    "updateSalesforceCredentials": {
+      "type": "string",
+      "value": "TO UPDATE SALESFORCE CREDENTIALS (without redeployment):\n\nOption 1: Using Azure Portal (Recommended)\n1. Go to Azure Portal → Key Vault: ${keyVault.outputs.keyVaultName}\n2. Navigate to Secrets\n3. Update these secrets:\n   - salesforce-instance-url\n   - salesforce-client-id\n   - salesforce-client-secret\n4. Changes take effect immediately (Function App auto-refreshes from Key Vault)\n\nOption 2: Using Azure CLI\naz keyvault secret set --vault-name \"${keyVault.outputs.keyVaultName}\" --name \"salesforce-instance-url\" --value \"https://yourorg.my.salesforce.com\"\naz keyvault secret set --vault-name \"${keyVault.outputs.keyVaultName}\" --name \"salesforce-client-id\" --value \"YOUR_CLIENT_ID\"\naz keyvault secret set --vault-name \"${keyVault.outputs.keyVaultName}\" --name \"salesforce-client-secret\" --value \"YOUR_CLIENT_SECRET\"\n\nNote: No need to restart Function App or Data Factory - they reference Key Vault directly.\n"
     }
   }
 }

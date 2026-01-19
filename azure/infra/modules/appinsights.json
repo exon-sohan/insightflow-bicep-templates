@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "12349836829614315037"
+      "templateHash": "10602934870423703683"
     }
   },
   "parameters": {
@@ -51,7 +51,8 @@
         "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]",
         "IngestionMode": "LogAnalytics",
         "publicNetworkAccessForIngestion": "Enabled",
-        "publicNetworkAccessForQuery": "Enabled"
+        "publicNetworkAccessForQuery": "Enabled",
+        "SamplingPercentage": 5
       },
       "dependsOn": [
         "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-workspace', parameters('appInsightsName')))]"

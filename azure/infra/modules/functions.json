@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "5449152766650622434"
+      "templateHash": "5961391093682628914"
     }
   },
   "parameters": {
@@ -91,9 +91,10 @@
     },
     "functionsPackageUrl": {
       "type": "string",
-      "defaultValue": "https://d2thmobgs2c8at.cloudfront.net/v1.0.0/functions.zip",
       "metadata": {
-        "description": "URL for functions package (WEBSITE_RUN_FROM_PACKAGE)"
+        "example": "https://yourstorageaccount.blob.core.windows.net/releases/v1.0.0/functions.zip?sp=r&st=2024-01-01T00:00:00Z&se=2026-12-31T23:59:59Z&spr=https&sv=2022-11-02&sr=b&sig=...",
+        "note": "Must be Azure Blob Storage URL with SAS token for Marketplace compliance",
+        "description": "URL for functions package with SAS token (WEBSITE_RUN_FROM_PACKAGE)"
       }
     },
     "subscriptionId": {
@@ -299,6 +300,20 @@
       "name": "[guid(parameters('storageAccountId'), resourceId('Microsoft.Web/sites', parameters('functionAppName')), variables('storageBlobDataContributorRoleId'))]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleId'))]",
+        "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[format('Microsoft.KeyVault/vaults/{0}', split(parameters('keyVaultUri'), '/')[2])]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', split(parameters('keyVaultUri'), '/')[2]), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'Key Vault Secrets User')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
         "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]",
         "principalType": "ServicePrincipal"
       },

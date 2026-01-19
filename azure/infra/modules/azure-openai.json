@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "12068521096643718879"
+      "templateHash": "2430656341465239177"
     }
   },
   "parameters": {
@@ -57,14 +57,14 @@
     "modelDeployments": {
       "gpt-5-nano": {
         "name": "gpt-5-nano",
-        "model": "gpt-5-nano",
-        "version": "2025-08-07",
+        "model": "gpt-4o-mini",
+        "version": "2024-07-18",
         "capacity": 10,
-        "deploymentType": "GlobalStandard"
+        "deploymentType": "Standard"
       },
       "gpt-4o-nano": {
         "name": "gpt-4o-nano",
-        "model": "gpt-4o-nano",
+        "model": "gpt-4o-mini",
         "version": "2024-07-18",
         "capacity": 10,
         "deploymentType": "Standard"

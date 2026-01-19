@@ -41,12 +41,12 @@
                         "name": "salesforceInstanceUrl",
                         "type": "Microsoft.Common.TextBox",
                         "label": "Salesforce Instance URL",
-                        "toolTip": "Your Salesforce URL (e.g., https://yourorg.my.salesforce.com)",
+                        "toolTip": "Your Salesforce URL (supports production, sandbox, and Lightning URLs)",
                         "placeholder": "https://yourorg.my.salesforce.com",
                         "constraints": {
                             "required": true,
-                            "regex": "^https:\\/\\/[a-zA-Z0-9][a-zA-Z0-9-]*\\.(my\\.)?salesforce\\.com\\/?$",
-                            "validationMessage": "Must be a valid Salesforce URL (e.g., https://yourorg.my.salesforce.com)"
+                            "regex": "^https:\\/\\/[a-zA-Z0-9.-]+\\.(my\\.salesforce|lightning\\.force|salesforce)\\.com\\/?$",
+                            "validationMessage": "Must be a valid Salesforce URL (e.g., https://yourorg.my.salesforce.com, https://yourorg.lightning.force.com)"
                         }
                     },
                     {
@@ -103,15 +103,22 @@
                         }
                     },
                     {
+                        "name": "useCustomQuery",
+                        "type": "Microsoft.Common.CheckBox",
+                        "label": "Use Custom SOQL Query (Advanced)",
+                        "toolTip": "Enable only if you need a custom SOQL query. Default query retrieves all records from the source object."
+                    },
+                    {
                         "name": "salesforceQuery",
                         "type": "Microsoft.Common.TextBox",
-                        "label": "SOQL Query (Optional)",
-                        "toolTip": "Custom SOQL query to retrieve records. Leave empty to use default query.",
+                        "label": "Custom SOQL Query",
+                        "toolTip": "Enter your custom SOQL query. Must start with SELECT and include all required fields.",
                         "placeholder": "SELECT Id, Name, Description FROM callreport__c WHERE CreatedDate >= LAST_N_DAYS:30",
+                        "visible": "[steps('salesforceConfig').useCustomQuery]",
                         "constraints": {
                             "required": false,
-                            "regex": "^(SELECT\\s+.*)?$",
-                            "validationMessage": "Must be a valid SOQL query starting with SELECT, or leave empty"
+                            "regex": "^SELECT\\s+.+$",
+                            "validationMessage": "Must be a valid SOQL query starting with SELECT"
                         }
                     }
                 ]
@@ -138,14 +145,72 @@
                     },
                     {
                         "name": "batchSize",
-                        "type": "Microsoft.Common.TextBox",
+                        "type": "Microsoft.Common.Slider",
                         "label": "Batch Size",
-                        "toolTip": "Records per batch (5-50)",
-                        "defaultValue": "10",
+                        "toolTip": "Number of records to process per batch (5-50). Lower values reduce timeout risk, higher values improve throughput.",
+                        "min": 5,
+                        "max": 50,
+                        "step": 5,
+                        "defaultValue": 10,
+                        "showStepMarkers": true,
+                        "constraints": {
+                            "required": true
+                        }
+                    },
+                    {
+                        "name": "enablePrivateNetworking",
+                        "type": "Microsoft.Common.OptionsGroup",
+                        "label": "Private Networking (Advanced)",
+                        "toolTip": "Enables private endpoints for Function App and Azure OpenAI. Requires VNet and Private DNS configuration. Increases costs. Only available for Professional/Enterprise tiers. Recommended for production environments with strict security requirements.",
+                        "defaultValue": "Disabled",
                         "constraints": {
                             "required": true,
-                            "regex": "^([5-9]|[1-4][0-9]|50)$",
-                            "validationMessage": "Must be between 5 and 50"
+                            "allowedValues": [
+                                {
+                                    "label": "Enabled (Production)",
+                                    "value": true
+                                },
+                                {
+                                    "label": "Disabled (Cost-Effective)",
+                                    "value": false
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "review",
+                "label": "Review + Deploy",
+                "elements": [
+                    {
+                        "name": "reviewInfo",
+                        "type": "Microsoft.Common.InfoBox",
+                        "options": {
+                            "icon": "Info",
+                            "text": "Please review your configuration before deployment. All Salesforce credentials will be securely stored in Azure Key Vault and never exposed in deployment outputs."
+                        }
+                    },
+                    {
+                        "name": "configSummary",
+                        "type": "Microsoft.Common.Section",
+                        "label": "Configuration Summary",
+                        "elements": [
+                            {
+                                "name": "summaryText",
+                                "type": "Microsoft.Common.TextBlock",
+                                "options": {
+                                    "text": "[concat('Solution Name: ', basics('solutionName'), '\\n', 'AI Model: ', steps('settings').aiModel, '\\n', 'Batch Size: ', string(steps('settings').batchSize), '\\n', 'Salesforce Object: ', steps('salesforceConfig').salesforceSourceObject, '\\n', 'Private Networking: ', if(steps('settings').enablePrivateNetworking, 'Enabled', 'Disabled'))]"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "postDeploymentInfo",
+                        "type": "Microsoft.Common.InfoBox",
+                        "options": {
+                            "icon": "Warning",
+                            "text": "After deployment: (1) Start the Data Factory trigger in Azure Portal, (2) Configure Salesforce Remote Site Settings. Detailed instructions will be available in deployment outputs."
                         }
                     }
                 ]
@@ -160,10 +225,11 @@
             "salesforceClientSecret": "[steps('salesforceConfig').salesforceClientSecret]",
             "salesforceApiVersion": "[steps('salesforceConfig').salesforceApiVersion]",
             "salesforceSourceObject": "[steps('salesforceConfig').salesforceSourceObject]",
-            "salesforceQuery": "[steps('salesforceConfig').salesforceQuery]",
+            "salesforceQuery": "[if(steps('salesforceConfig').useCustomQuery, steps('salesforceConfig').salesforceQuery, '')]",
             "aiModel": "[steps('settings').aiModel]",
             "pricingTier": "starter",
-            "batchSize": "[int(steps('settings').batchSize)]"
+            "batchSize": "[steps('settings').batchSize]",
+            "enablePrivateNetworking": "[steps('settings').enablePrivateNetworking]"
         }
     }
 }

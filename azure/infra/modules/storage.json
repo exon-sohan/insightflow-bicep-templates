@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "2633524769895621644"
+      "templateHash": "2998605365800209553"
     }
   },
   "parameters": {
@@ -106,6 +106,69 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+      "properties": {
+        "policy": {
+          "rules": [
+            {
+              "enabled": true,
+              "name": "tier-and-delete-batch-data",
+              "type": "Lifecycle",
+              "definition": {
+                "actions": {
+                  "baseBlob": {
+                    "tierToCool": {
+                      "daysAfterModificationGreaterThan": 7
+                    },
+                    "delete": {
+                      "daysAfterModificationGreaterThan": 30
+                    }
+                  }
+                },
+                "filters": {
+                  "blobTypes": [
+                    "blockBlob"
+                  ],
+                  "prefixMatch": [
+                    "datasets/",
+                    "output/",
+                    "summaries/"
+                  ]
+                }
+              }
+            },
+            {
+              "enabled": true,
+              "name": "keep-sync-status",
+              "type": "Lifecycle",
+              "definition": {
+                "actions": {
+                  "baseBlob": {
+                    "tierToCool": {
+                      "daysAfterModificationGreaterThan": 30
+                    }
+                  }
+                },
+                "filters": {
+                  "blobTypes": [
+                    "blockBlob"
+                  ],
+                  "prefixMatch": [
+                    "sf-sync-status/"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
       ]
     }
   ],
