@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "16967808950373096451"
+      "templateHash": "3610835232820713656"
     }
   },
   "parameters": {
@@ -55,6 +55,13 @@
       "defaultValue": "callreport__c",
       "metadata": {
         "description": "Salesforce source object API name"
+      }
+    },
+    "salesforceDestinationObject": {
+      "type": "string",
+      "defaultValue": "azinsights__c",
+      "metadata": {
+        "description": "Salesforce destination object API name for AI insights"
       }
     },
     "salesforceApiVersion": {
@@ -894,6 +901,9 @@
           "functionsPackageUrl": {
             "value": "[parameters('functionsPackageUrl')]"
           },
+          "salesforceDestinationObject": {
+            "value": "[parameters('salesforceDestinationObject')]"
+          },
           "vnetId": "[if(variables('effectiveVnetEnabled'), createObject('value', reference('network').outputs.vnetId.value), createObject('value', ''))]",
           "vnetIntegrationSubnetId": "[if(variables('effectiveVnetEnabled'), createObject('value', reference('network').outputs.functionSubnetId.value), createObject('value', ''))]",
           "enableVnetIntegration": {
@@ -907,7 +917,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "5961391093682628914"
+              "templateHash": "17227746615889747025"
             }
           },
           "parameters": {
@@ -997,6 +1007,12 @@
                 "example": "https://yourstorageaccount.blob.core.windows.net/releases/v1.0.0/functions.zip?sp=r&st=2024-01-01T00:00:00Z&se=2026-12-31T23:59:59Z&spr=https&sv=2022-11-02&sr=b&sig=...",
                 "note": "Must be Azure Blob Storage URL with SAS token for Marketplace compliance",
                 "description": "URL for functions package with SAS token (WEBSITE_RUN_FROM_PACKAGE)"
+              }
+            },
+            "salesforceDestinationObject": {
+              "type": "string",
+              "metadata": {
+                "description": "Salesforce destination object API name for AI insights write-back"
               }
             },
             "subscriptionId": {
@@ -1159,6 +1175,10 @@
                       "value": "sf-sync-status"
                     },
                     {
+                      "name": "SF_DESTINATION_OBJECT",
+                      "value": "[parameters('salesforceDestinationObject')]"
+                    },
+                    {
                       "name": "AZURE_SUBSCRIPTION_ID",
                       "value": "[parameters('subscriptionId')]"
                     },
@@ -1293,6 +1313,9 @@
           "salesforceSourceObject": {
             "value": "[parameters('salesforceSourceObject')]"
           },
+          "salesforceDestinationObject": {
+            "value": "[parameters('salesforceDestinationObject')]"
+          },
           "salesforceApiVersion": {
             "value": "[parameters('salesforceApiVersion')]"
           },
@@ -1307,7 +1330,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "11387701433563298401"
+              "templateHash": "17376418782773524854"
             }
           },
           "parameters": {
@@ -1345,6 +1368,12 @@
               "type": "string",
               "metadata": {
                 "description": "Salesforce source object API name"
+              }
+            },
+            "salesforceDestinationObject": {
+              "type": "string",
+              "metadata": {
+                "description": "Salesforce destination object API name for AI insights"
               }
             },
             "salesforceApiVersion": {
@@ -1520,7 +1549,7 @@
                       "source": {
                         "type": "SalesforceV2Source",
                         "SOQLQuery": {
-                          "value": "@concat('SELECT Id, Name, calldetails__c, callhighlights__c, Description__c, Phone__c, Email__c, Status__c, CreatedDate FROM ', pipeline().parameters.sourceObject, ' WHERE CreatedDate >= ', pipeline().parameters.startDate)",
+                          "value": "@concat('SELECT Id, Name, calldetails__c, callhighlights__c, Description__c, Status__c, CreatedDate FROM ', pipeline().parameters.sourceObject, ' WHERE CreatedDate >= ', pipeline().parameters.startDate)",
                           "type": "Expression"
                         }
                       },
@@ -1597,6 +1626,118 @@
                 "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
                 "[resourceId('Microsoft.DataFactory/factories/pipelines', parameters('dataFactoryName'), 'SalesforceCallReportPipeline')]"
               ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/datasets",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'SalesforceAIInsights')]",
+              "properties": {
+                "linkedServiceName": {
+                  "referenceName": "Salesforce",
+                  "type": "LinkedServiceReference"
+                },
+                "type": "SalesforceV2Object",
+                "typeProperties": {
+                  "objectApiName": "[parameters('salesforceDestinationObject')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+                "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'Salesforce')]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/datasets",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'ProcessedInsightsBlob')]",
+              "properties": {
+                "linkedServiceName": {
+                  "referenceName": "AzureBlobStorage",
+                  "type": "LinkedServiceReference"
+                },
+                "type": "Json",
+                "typeProperties": {
+                  "location": {
+                    "type": "AzureBlobStorageLocation",
+                    "container": "output",
+                    "fileName": {
+                      "value": "@pipeline().parameters.fileName",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'AzureBlobStorage')]",
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/pipelines",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'SalesforceWriteBackPipeline')]",
+              "properties": {
+                "activities": [
+                  {
+                    "name": "CopyInsightsToSalesforce",
+                    "type": "Copy",
+                    "typeProperties": {
+                      "source": {
+                        "type": "JsonSource",
+                        "storeSettings": {
+                          "type": "AzureBlobStorageReadSettings",
+                          "recursive": false
+                        },
+                        "formatSettings": {
+                          "type": "JsonReadSettings"
+                        }
+                      },
+                      "sink": {
+                        "type": "SalesforceV2Sink",
+                        "writeBehavior": "insert",
+                        "writeBatchSize": 5000,
+                        "ignoreNullValues": false
+                      },
+                      "enableStaging": false,
+                      "translator": {
+                        "type": "TabularTranslator",
+                        "typeConversion": true,
+                        "typeConversionSettings": {
+                          "allowDataTruncation": true,
+                          "treatBooleanAsNumber": false
+                        }
+                      }
+                    },
+                    "inputs": [
+                      {
+                        "referenceName": "ProcessedInsightsBlob",
+                        "type": "DatasetReference"
+                      }
+                    ],
+                    "outputs": [
+                      {
+                        "referenceName": "SalesforceAIInsights",
+                        "type": "DatasetReference"
+                      }
+                    ]
+                  }
+                ],
+                "parameters": {
+                  "fileName": {
+                    "type": "String",
+                    "defaultValue": ""
+                  },
+                  "destinationObject": {
+                    "type": "String",
+                    "defaultValue": "[parameters('salesforceDestinationObject')]"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+                "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'ProcessedInsightsBlob')]",
+                "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'SalesforceAIInsights')]"
+              ]
             }
           ],
           "outputs": {
@@ -1615,6 +1756,10 @@
             "pipelineName": {
               "type": "string",
               "value": "SalesforceCallReportPipeline"
+            },
+            "writeBackPipelineName": {
+              "type": "string",
+              "value": "SalesforceWriteBackPipeline"
             }
           }
         }

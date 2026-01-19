@@ -94,12 +94,24 @@
                         "name": "salesforceSourceObject",
                         "type": "Microsoft.Common.TextBox",
                         "label": "Source Object API Name",
-                        "toolTip": "Salesforce object containing call reports (API name ending in __c for custom objects)",
+                        "toolTip": "Salesforce object to read call reports from (API name ending in __c for custom objects)",
                         "defaultValue": "callreport__c",
                         "constraints": {
                             "required": true,
                             "regex": "^[a-zA-Z][a-zA-Z0-9_]*(__c)?$",
                             "validationMessage": "Must be a valid Salesforce object API name (e.g., Account, callreport__c)"
+                        }
+                    },
+                    {
+                        "name": "salesforceDestinationObject",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Destination Object API Name",
+                        "toolTip": "Salesforce object to write AI insights to. This object will receive the processed insights from Azure OpenAI.",
+                        "defaultValue": "azinsights__c",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-zA-Z][a-zA-Z0-9_]*(__c)?$",
+                            "validationMessage": "Must be a valid Salesforce object API name (e.g., azinsights__c)"
                         }
                     },
                     {
@@ -225,6 +237,7 @@
             "salesforceClientSecret": "[steps('salesforceConfig').salesforceClientSecret]",
             "salesforceApiVersion": "[steps('salesforceConfig').salesforceApiVersion]",
             "salesforceSourceObject": "[steps('salesforceConfig').salesforceSourceObject]",
+            "salesforceDestinationObject": "[steps('salesforceConfig').salesforceDestinationObject]",
             "salesforceQuery": "[if(steps('salesforceConfig').useCustomQuery, steps('salesforceConfig').salesforceQuery, '')]",
             "aiModel": "[steps('settings').aiModel]",
             "pricingTier": "starter",

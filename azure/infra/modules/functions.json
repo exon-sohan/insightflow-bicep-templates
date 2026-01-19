@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "5961391093682628914"
+      "templateHash": "17227746615889747025"
     }
   },
   "parameters": {
@@ -95,6 +95,12 @@
         "example": "https://yourstorageaccount.blob.core.windows.net/releases/v1.0.0/functions.zip?sp=r&st=2024-01-01T00:00:00Z&se=2026-12-31T23:59:59Z&spr=https&sv=2022-11-02&sr=b&sig=...",
         "note": "Must be Azure Blob Storage URL with SAS token for Marketplace compliance",
         "description": "URL for functions package with SAS token (WEBSITE_RUN_FROM_PACKAGE)"
+      }
+    },
+    "salesforceDestinationObject": {
+      "type": "string",
+      "metadata": {
+        "description": "Salesforce destination object API name for AI insights write-back"
       }
     },
     "subscriptionId": {
@@ -255,6 +261,10 @@
             {
               "name": "SYNC_STATUS_CONTAINER",
               "value": "sf-sync-status"
+            },
+            {
+              "name": "SF_DESTINATION_OBJECT",
+              "value": "[parameters('salesforceDestinationObject')]"
             },
             {
               "name": "AZURE_SUBSCRIPTION_ID",
