@@ -188,19 +188,6 @@
                                 }
                             ]
                         }
-                    },
-                    {
-                        "name": "functionsPackageUrl",
-                        "type": "Microsoft.Common.TextBox",
-                        "label": "Function Package URL",
-                        "toolTip": "Function deployment package URL from GitHub releases. The default value points to the latest verified release.",
-                        "defaultValue": "https://github.com/exon-sohan/insightflow-functions/releases/download/v1.0.2/functions.zip",
-                        "constraints": {
-                            "required": true,
-                            "regex": "^https://(github\\.com/[^/]+/[^/]+/releases/download/[^/]+|[a-z0-9]+\\.blob\\.core\\.windows\\.net)/[^\\s]+\\.zip(\\?.*)?$",
-                            "validationMessage": "Must be a valid GitHub release or Azure Blob Storage URL ending with .zip"
-                        },
-                        "visible": false
                     }
                 ]
             },
@@ -255,8 +242,7 @@
             "aiModel": "[steps('settings').aiModel]",
             "pricingTier": "starter",
             "batchSize": "[steps('settings').batchSize]",
-            "enablePrivateNetworking": "[steps('settings').enablePrivateNetworking]",
-            "functionsPackageUrl": "[steps('settings').functionsPackageUrl]"
+            "enablePrivateNetworking": "[steps('settings').enablePrivateNetworking]"
         }
     }
 }
