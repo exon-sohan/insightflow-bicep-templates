@@ -193,12 +193,12 @@
                         "name": "functionsPackageUrl",
                         "type": "Microsoft.Common.TextBox",
                         "label": "Function Package URL",
-                        "toolTip": "Azure Blob Storage URL with SAS token for the function deployment package. The default value points to the latest verified release.",
-                        "defaultValue": "https://insightflowvendor0494.blob.core.windows.net/releases/latest/functions.zip?se=2026-12-31T23%3A59%3A59Z&sp=r&spr=https&sv=2022-11-02&sr=b&sig=ey56smi9j%2FsOimj%2FqMfYQyDkGasVgnCa6%2FXeYedpBT8%3D",
+                        "toolTip": "Function deployment package URL from GitHub releases. The default value points to the latest verified release.",
+                        "defaultValue": "https://github.com/exon-sohan/insightflow-functions/releases/download/v1.0.2/functions.zip",
                         "constraints": {
                             "required": true,
-                            "regex": "^https://[a-z0-9]+\\.blob\\.core\\.windows\\.net/.+\\.zip(\\?.*)?$",
-                            "validationMessage": "Must be a valid Azure Blob Storage URL ending with .zip"
+                            "regex": "^https://(github\\.com/[^/]+/[^/]+/releases/download/[^/]+|[a-z0-9]+\\.blob\\.core\\.windows\\.net)/[^\\s]+\\.zip(\\?.*)?$",
+                            "validationMessage": "Must be a valid GitHub release or Azure Blob Storage URL ending with .zip"
                         },
                         "visible": false
                     }
