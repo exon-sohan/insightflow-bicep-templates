@@ -126,12 +126,18 @@
       "metadata": {
         "description": "Enable private networking for Function App and Azure OpenAI (Data Factory remains public for easier customer access)"
       }
+    },
+    "functionsPackageUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/exon-sohan/insightflow-functions/releases/download/v1.0.2/functions.zip",
+      "metadata": {
+        "description": "Function App package URL (Azure Blob Storage with SAS token or GitHub release URL)"
+      }
     }
   },
   "variables": {
     "templateBaseUrl": "[concat('https://raw.githubusercontent.com/', parameters('githubRepo'), '/', parameters('templateVersion'), '/azure/infra')]",
-    "infrastructureTemplateUri": "[concat(variables('templateBaseUrl'), '/mainTemplate.json')]",
-    "functionsPackageUrl": "https://github.com/exon-sohan/insightflow-functions/releases/download/v1.0.2/functions.zip"
+    "infrastructureTemplateUri": "[concat(variables('templateBaseUrl'), '/main.json')]"
   },
   "resources": [
     {
@@ -201,7 +207,7 @@
             "value": "[parameters('enablePrivateNetworking')]"
           },
           "functionsPackageUrl": {
-            "value": "[variables('functionsPackageUrl')]"
+            "value": "[parameters('functionsPackageUrl')]"
           }
         }
       }
