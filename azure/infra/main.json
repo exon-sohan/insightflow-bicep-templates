@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "1355813223735442196"
+      "templateHash": "4198415625016820941"
     }
   },
   "parameters": {
@@ -889,6 +889,9 @@
           "aiProjectEndpoint": {
             "value": "[reference('azureOpenAI').outputs.aiEndpoint.value]"
           },
+          "aiDeploymentName": {
+            "value": "[reference('azureOpenAI').outputs.deploymentName.value]"
+          },
           "batchSize": {
             "value": "[variables('effectiveBatchSize')]"
           },
@@ -917,7 +920,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "15684402712069832810"
+              "templateHash": "12243553132449247893"
             }
           },
           "parameters": {
@@ -999,6 +1002,12 @@
               "type": "string",
               "metadata": {
                 "description": "Azure AI Project Endpoint"
+              }
+            },
+            "aiDeploymentName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure OpenAI Deployment Name"
               }
             },
             "functionsPackageUrl": {
@@ -1153,6 +1162,10 @@
                     {
                       "name": "AZURE_AI_PROJECT_ENDPOINT",
                       "value": "[parameters('aiProjectEndpoint')]"
+                    },
+                    {
+                      "name": "AZURE_OPENAI_DEPLOYMENT_NAME",
+                      "value": "[parameters('aiDeploymentName')]"
                     },
                     {
                       "name": "BATCH_SIZE",

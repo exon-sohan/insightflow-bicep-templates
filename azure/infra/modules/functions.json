@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "17227746615889747025"
+      "templateHash": "12243553132449247893"
     }
   },
   "parameters": {
@@ -87,6 +87,12 @@
       "type": "string",
       "metadata": {
         "description": "Azure AI Project Endpoint"
+      }
+    },
+    "aiDeploymentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure OpenAI Deployment Name"
       }
     },
     "functionsPackageUrl": {
@@ -224,15 +230,15 @@
             },
             {
               "name": "SF_INSTANCE_URL",
-              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceInstanceUrl)', split(parameters('keyVaultUri'), '/')[2])]"
+              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceInstanceUrl)', split(split(parameters('keyVaultUri'), '/')[2], '.')[0])]"
             },
             {
               "name": "SF_CLIENT_ID",
-              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceClientId)', split(parameters('keyVaultUri'), '/')[2])]"
+              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceClientId)', split(split(parameters('keyVaultUri'), '/')[2], '.')[0])]"
             },
             {
               "name": "SF_CLIENT_SECRET",
-              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceClientSecret)', split(parameters('keyVaultUri'), '/')[2])]"
+              "value": "[format('@Microsoft.KeyVault(VaultName={0};SecretName=SalesforceClientSecret)', split(split(parameters('keyVaultUri'), '/')[2], '.')[0])]"
             },
             {
               "name": "AI_MODEL",
@@ -241,6 +247,10 @@
             {
               "name": "AZURE_AI_PROJECT_ENDPOINT",
               "value": "[parameters('aiProjectEndpoint')]"
+            },
+            {
+              "name": "AZURE_OPENAI_DEPLOYMENT_NAME",
+              "value": "[parameters('aiDeploymentName')]"
             },
             {
               "name": "BATCH_SIZE",
@@ -320,8 +330,8 @@
     {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[format('Microsoft.KeyVault/vaults/{0}', split(parameters('keyVaultUri'), '/')[2])]",
-      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', split(parameters('keyVaultUri'), '/')[2]), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'Key Vault Secrets User')]",
+      "scope": "[format('Microsoft.KeyVault/vaults/{0}', split(split(parameters('keyVaultUri'), '/')[2], '.')[0])]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', split(split(parameters('keyVaultUri'), '/')[2], '.')[0]), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'Key Vault Secrets User')]",
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
         "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]",

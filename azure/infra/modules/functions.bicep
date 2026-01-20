@@ -38,6 +38,9 @@ param dataFactoryName string
 @description('Azure AI Project Endpoint')
 param aiProjectEndpoint string
 
+@description('Azure OpenAI Deployment Name')
+param aiDeploymentName string
+
 @description('URL for functions package with SAS token (WEBSITE_RUN_FROM_PACKAGE)')
 @metadata({
   example: 'https://yourstorageaccount.blob.core.windows.net/releases/v1.0.0/functions.zip?sp=r&st=2024-01-01T00:00:00Z&se=2026-12-31T23:59:59Z&spr=https&sv=2022-11-02&sr=b&sig=...'
@@ -178,6 +181,10 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'AZURE_AI_PROJECT_ENDPOINT'
           value: aiProjectEndpoint
+        }
+        {
+          name: 'AZURE_OPENAI_DEPLOYMENT_NAME'
+          value: aiDeploymentName
         }
         {
           name: 'BATCH_SIZE'
