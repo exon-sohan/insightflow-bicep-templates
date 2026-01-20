@@ -62,35 +62,17 @@ resource adfStorageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-
   }
 }
 
-// Linked Service: Azure Blob Storage (using Managed Identity)
+// Linked Service: Azure Blob Storage (using connection string for immediate access)
+// Note: Using account key instead of managed identity to avoid RBAC propagation delays
 resource blobLinkedService 'Microsoft.DataFactory/factories/linkedservices@2018-06-01' = {
   parent: dataFactory
   name: 'AzureBlobStorage'
   properties: {
     type: 'AzureBlobStorage'
     typeProperties: {
-      serviceEndpoint: 'https://${storageAccountName}.blob.${environment().suffixes.storage}'
-      accountKind: 'StorageV2'
-      credential: {
-        referenceName: 'ManagedIdentityCredential'
-        type: 'CredentialReference'
-      }
+      connectionString: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
     }
     annotations: []
-  }
-  dependsOn: [
-    adfStorageRoleAssignment
-    managedIdentityCredential
-  ]
-}
-
-// Managed Identity Credential for Data Factory
-resource managedIdentityCredential 'Microsoft.DataFactory/factories/credentials@2018-06-01' = {
-  parent: dataFactory
-  name: 'ManagedIdentityCredential'
-  properties: {
-    type: 'ManagedIdentity'
-    typeProperties: {}
   }
 }
 

@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "12803715729411259887"
+      "templateHash": "1355813223735442196"
     }
   },
   "parameters": {
@@ -1330,7 +1330,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "12183501824570912731"
+              "templateHash": "3909971765575465342"
             }
           },
           "parameters": {
@@ -1428,28 +1428,9 @@
               "properties": {
                 "type": "AzureBlobStorage",
                 "typeProperties": {
-                  "serviceEndpoint": "[format('https://{0}.blob.{1}', parameters('storageAccountName'), environment().suffixes.storage)]",
-                  "accountKind": "StorageV2",
-                  "credential": {
-                    "referenceName": "ManagedIdentityCredential",
-                    "type": "CredentialReference"
-                  }
+                  "connectionString": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
                 },
                 "annotations": []
-              },
-              "dependsOn": [
-                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(parameters('storageAccountId'), resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName')), variables('storageBlobDataContributorRoleId')))]",
-                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
-                "[resourceId('Microsoft.DataFactory/factories/credentials', parameters('dataFactoryName'), 'ManagedIdentityCredential')]"
-              ]
-            },
-            {
-              "type": "Microsoft.DataFactory/factories/credentials",
-              "apiVersion": "2018-06-01",
-              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'ManagedIdentityCredential')]",
-              "properties": {
-                "type": "ManagedIdentity",
-                "typeProperties": {}
               },
               "dependsOn": [
                 "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
