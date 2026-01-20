@@ -156,7 +156,7 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2021-04-01",
-      "name": "insightflow-infrastructure",
+      "name": "[concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))]",
       "properties": {
         "mode": "Incremental",
         "templateLink": {
@@ -216,59 +216,59 @@
   "outputs": {
     "nextSteps": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.nextSteps.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.nextSteps.value]"
     },
     "updateSalesforceCredentials": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.updateSalesforceCredentials.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.updateSalesforceCredentials.value]"
     },
     "triggerPipelineUrl": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.triggerPipelineUrl.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.triggerPipelineUrl.value]"
     },
     "healthCheckUrl": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.healthCheckUrl.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.healthCheckUrl.value]"
     },
     "setupInstructionsUrl": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.setupInstructionsUrl.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.setupInstructionsUrl.value]"
     },
     "salesforceRemoteSiteUrl": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.salesforceRemoteSiteUrl.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.salesforceRemoteSiteUrl.value]"
     },
     "functionAppName": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.functionAppName.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.functionAppName.value]"
     },
     "dataFactoryName": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.dataFactoryName.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.dataFactoryName.value]"
     },
     "storageAccountName": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.storageAccountName.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.storageAccountName.value]"
     },
     "keyVaultName": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.keyVaultName.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.keyVaultName.value]"
     },
     "aiModel": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.aiModel.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.aiModel.value]"
     },
     "batchSize": {
       "type": "int",
-      "value": "[reference('insightflow-infrastructure').outputs.batchSize.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.batchSize.value]"
     },
     "pricingTier": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.pricingTier.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.pricingTier.value]"
     },
     "recordLimit": {
       "type": "int",
-      "value": "[reference('insightflow-infrastructure').outputs.recordLimit.value]"
+      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.recordLimit.value]"
     }
   }
 }
