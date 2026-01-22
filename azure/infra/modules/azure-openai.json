@@ -83,6 +83,13 @@
         "capacity": 10,
         "deploymentType": "Standard"
       }
+    },
+    "batchDeployment": {
+      "name": "gpt-4o-mini-batch",
+      "model": "gpt-4o-mini",
+      "version": "2024-07-18",
+      "capacity": 100,
+      "deploymentType": "GlobalBatch"
     }
   },
   "resources": [
@@ -194,6 +201,26 @@
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName'))]"
       ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', parameters('aiProjectName'), variables('batchDeployment').name)]",
+      "sku": {
+        "name": "[variables('batchDeployment').deploymentType]",
+        "capacity": "[variables('batchDeployment').capacity]"
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('batchDeployment').model]",
+          "version": "[variables('batchDeployment').version]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('aiProjectName'), variables('modelDeployments')[parameters('aiModel')].name)]"
+      ]
     }
   ],
   "outputs": {
@@ -212,6 +239,10 @@
     "deploymentName": {
       "type": "string",
       "value": "[variables('modelDeployments')[parameters('aiModel')].name]"
+    },
+    "batchDeploymentName": {
+      "type": "string",
+      "value": "[variables('batchDeployment').name]"
     },
     "aiApiKey": {
       "type": "string",

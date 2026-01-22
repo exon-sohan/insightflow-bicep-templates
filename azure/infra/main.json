@@ -892,6 +892,9 @@
           "aiDeploymentName": {
             "value": "[reference('azureOpenAI').outputs.deploymentName.value]"
           },
+          "aiBatchDeploymentName": {
+            "value": "[reference('azureOpenAI').outputs.batchDeploymentName.value]"
+          },
           "aiApiKey": {
             "value": "[reference('azureOpenAI').outputs.aiApiKey.value]"
           },
