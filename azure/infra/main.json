@@ -2098,6 +2098,10 @@
             "deploymentName": {
               "type": "string",
               "value": "[variables('modelDeployments')[parameters('aiModel')].name]"
+            },
+            "aiApiKey": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('aiProjectName')), '2024-10-01').key1]"
             }
           }
         }
