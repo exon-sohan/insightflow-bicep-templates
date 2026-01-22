@@ -892,6 +892,9 @@
           "aiDeploymentName": {
             "value": "[reference('azureOpenAI').outputs.deploymentName.value]"
           },
+          "aiApiKey": {
+            "value": "[reference('azureOpenAI').outputs.aiApiKey.value]"
+          },
           "batchSize": {
             "value": "[variables('effectiveBatchSize')]"
           },
@@ -1008,6 +1011,12 @@
               "type": "string",
               "metadata": {
                 "description": "Azure OpenAI Deployment Name"
+              }
+            },
+            "aiApiKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Azure OpenAI API Key"
               }
             },
             "functionsPackageUrl": {
@@ -1169,7 +1178,7 @@
                     },
                     {
                       "name": "AZURE_OPENAI_API_KEY",
-                      "value": "[reference('azureOpenAI').outputs.aiApiKey.value]"
+                      "value": "[parameters('aiApiKey')]"
                     },
                     {
                       "name": "AZURE_STORAGE_CONNECTION_STRING",
