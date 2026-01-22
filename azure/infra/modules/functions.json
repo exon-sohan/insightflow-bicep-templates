@@ -95,6 +95,12 @@
         "description": "Azure OpenAI Deployment Name"
       }
     },
+    "aiApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Azure OpenAI API Key"
+      }
+    },
     "functionsPackageUrl": {
       "type": "string",
       "metadata": {
@@ -251,6 +257,14 @@
             {
               "name": "AZURE_OPENAI_DEPLOYMENT_NAME",
               "value": "[parameters('aiDeploymentName')]"
+            },
+            {
+              "name": "AZURE_OPENAI_API_KEY",
+              "value": "[parameters('aiApiKey')]"
+            },
+            {
+              "name": "AZURE_STORAGE_CONNECTION_STRING",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
             },
             {
               "name": "BATCH_SIZE",

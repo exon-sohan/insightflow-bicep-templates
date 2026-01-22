@@ -1168,6 +1168,14 @@
                       "value": "[parameters('aiDeploymentName')]"
                     },
                     {
+                      "name": "AZURE_OPENAI_API_KEY",
+                      "value": "[reference('azureOpenAI').outputs.aiApiKey.value]"
+                    },
+                    {
+                      "name": "AZURE_STORAGE_CONNECTION_STRING",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
+                    },
+                    {
                       "name": "BATCH_SIZE",
                       "value": "[string(parameters('batchSize'))]"
                     },
