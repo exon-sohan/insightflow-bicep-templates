@@ -1016,6 +1016,13 @@
                 "description": "Azure OpenAI Deployment Name"
               }
             },
+            "aiBatchDeploymentName": {
+              "type": "string",
+              "defaultValue": "gpt-4o-mini-batch",
+              "metadata": {
+                "description": "Azure OpenAI Batch Deployment Name (GlobalBatch SKU)"
+              }
+            },
             "aiApiKey": {
               "type": "securestring",
               "metadata": {
@@ -1178,6 +1185,10 @@
                     {
                       "name": "AZURE_OPENAI_DEPLOYMENT_NAME",
                       "value": "[parameters('aiDeploymentName')]"
+                    },
+                    {
+                      "name": "AZURE_OPENAI_BATCH_DEPLOYMENT_NAME",
+                      "value": "[parameters('aiBatchDeploymentName')]"
                     },
                     {
                       "name": "AZURE_OPENAI_API_KEY",
