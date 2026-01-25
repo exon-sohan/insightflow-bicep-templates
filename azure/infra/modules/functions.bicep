@@ -229,6 +229,15 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           name: 'PIPELINE_NAME'
           value: 'SalesforceCallReportPipeline'
         }
+        // Dynamic pipeline configuration (uses same ADF)
+        {
+          name: 'DYNAMIC_DATA_FACTORY_NAME'
+          value: dataFactoryName
+        }
+        {
+          name: 'DYNAMIC_PIPELINE_NAME'
+          value: 'DynamicSalesforceExtractPipeline'
+        }
       ]
       functionAppScaleLimit: isConsumptionPlan ? 200 : (isElasticPlan ? 20 : 0)
     }

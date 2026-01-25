@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "12243553132449247893"
+      "templateHash": "3527120545178223563"
     }
   },
   "parameters": {
@@ -93,19 +93,6 @@
       "type": "string",
       "metadata": {
         "description": "Azure OpenAI Deployment Name"
-      }
-    },
-    "aiBatchDeploymentName": {
-      "type": "string",
-      "defaultValue": "gpt-4o-mini-batch",
-      "metadata": {
-        "description": "Azure OpenAI Batch Deployment Name (GlobalBatch SKU)"
-      }
-    },
-    "aiApiKey": {
-      "type": "securestring",
-      "metadata": {
-        "description": "Azure OpenAI API Key"
       }
     },
     "functionsPackageUrl": {
@@ -266,18 +253,6 @@
               "value": "[parameters('aiDeploymentName')]"
             },
             {
-              "name": "AZURE_OPENAI_BATCH_DEPLOYMENT_NAME",
-              "value": "[parameters('aiBatchDeploymentName')]"
-            },
-            {
-              "name": "AZURE_OPENAI_API_KEY",
-              "value": "[parameters('aiApiKey')]"
-            },
-            {
-              "name": "AZURE_STORAGE_CONNECTION_STRING",
-              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
-            },
-            {
               "name": "BATCH_SIZE",
               "value": "[string(parameters('batchSize'))]"
             },
@@ -316,6 +291,14 @@
             {
               "name": "PIPELINE_NAME",
               "value": "SalesforceCallReportPipeline"
+            },
+            {
+              "name": "DYNAMIC_DATA_FACTORY_NAME",
+              "value": "[parameters('dataFactoryName')]"
+            },
+            {
+              "name": "DYNAMIC_PIPELINE_NAME",
+              "value": "DynamicSalesforceExtractPipeline"
             }
           ],
           "functionAppScaleLimit": "[if(variables('isConsumptionPlan'), 200, if(variables('isElasticPlan'), 20, 0))]"

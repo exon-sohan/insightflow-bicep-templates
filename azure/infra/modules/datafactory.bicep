@@ -386,9 +386,166 @@ resource writeBackPipeline 'Microsoft.DataFactory/factories/pipelines@2018-06-01
 // 2. Azure CLI: az datafactory trigger start --resource-group <rg> --factory-name <adf-name> --name DailyExtractionTrigger
 // 3. The trigger will auto-activate on first manual pipeline run
 
+// ============================================
+// DYNAMIC EXTRACTION PIPELINE
+// Accepts objectApiName and fieldNames as parameters
+// ============================================
+
+// Dataset: Dynamic Salesforce Source (parameterized object)
+resource dynamicSalesforceDataset 'Microsoft.DataFactory/factories/datasets@2018-06-01' = {
+  parent: dataFactory
+  name: 'DynamicSalesforceDataset'
+  properties: {
+    linkedServiceName: {
+      referenceName: 'Salesforce'
+      type: 'LinkedServiceReference'
+    }
+    parameters: {
+      objectApiName: {
+        type: 'String'
+      }
+    }
+    type: 'SalesforceV2Object'
+    typeProperties: {
+      objectApiName: {
+        value: '@dataset().objectApiName'
+        type: 'Expression'
+      }
+    }
+  }
+  dependsOn: [
+    salesforceLinkedService
+  ]
+}
+
+// Dataset: Dynamic Blob Sink (parameterized path)
+resource dynamicBlobDataset 'Microsoft.DataFactory/factories/datasets@2018-06-01' = {
+  parent: dataFactory
+  name: 'DynamicBlobDataset'
+  properties: {
+    linkedServiceName: {
+      referenceName: 'AzureBlobStorage'
+      type: 'LinkedServiceReference'
+    }
+    parameters: {
+      objectApiName: {
+        type: 'String'
+      }
+    }
+    type: 'Json'
+    typeProperties: {
+      location: {
+        type: 'AzureBlobStorageLocation'
+        container: 'datasets'
+        folderPath: {
+          value: '@dataset().objectApiName'
+          type: 'Expression'
+        }
+        fileName: {
+          value: '@concat(dataset().objectApiName, \'_\', formatDateTime(utcnow(), \'yyyyMMdd_HHmmss\'), \'.json\')'
+          type: 'Expression'
+        }
+      }
+    }
+  }
+  dependsOn: [
+    blobLinkedService
+  ]
+}
+
+// Pipeline: Dynamic Salesforce Extraction
+resource dynamicExtractPipeline 'Microsoft.DataFactory/factories/pipelines@2018-06-01' = {
+  parent: dataFactory
+  name: 'DynamicSalesforceExtractPipeline'
+  properties: {
+    description: 'Dynamic pipeline that extracts data from any Salesforce object with specified fields and saves to blob storage'
+    activities: [
+      {
+        name: 'CopyDynamicSalesforceData'
+        type: 'Copy'
+        dependsOn: []
+        policy: {
+          timeout: '0.01:00:00'
+          retry: 2
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        typeProperties: {
+          source: {
+            type: 'SalesforceV2Source'
+            SOQLQuery: {
+              value: '@concat(\'SELECT \', pipeline().parameters.fieldNames, \' FROM \', pipeline().parameters.objectApiName, if(empty(pipeline().parameters.whereClause), \'\', concat(\' WHERE \', pipeline().parameters.whereClause)))'
+              type: 'Expression'
+            }
+            includeDeletedObjects: false
+          }
+          sink: {
+            type: 'JsonSink'
+            storeSettings: {
+              type: 'AzureBlobStorageWriteSettings'
+            }
+            formatSettings: {
+              type: 'JsonWriteSettings'
+              filePattern: 'arrayOfObjects'
+            }
+          }
+          enableStaging: false
+        }
+        inputs: [
+          {
+            referenceName: 'DynamicSalesforceDataset'
+            type: 'DatasetReference'
+            parameters: {
+              objectApiName: {
+                value: '@pipeline().parameters.objectApiName'
+                type: 'Expression'
+              }
+            }
+          }
+        ]
+        outputs: [
+          {
+            referenceName: 'DynamicBlobDataset'
+            type: 'DatasetReference'
+            parameters: {
+              objectApiName: {
+                value: '@pipeline().parameters.objectApiName'
+                type: 'Expression'
+              }
+            }
+          }
+        ]
+      }
+    ]
+    parameters: {
+      objectApiName: {
+        type: 'String'
+        defaultValue: 'Account'
+      }
+      fieldNames: {
+        type: 'String'
+        defaultValue: 'Id, Name'
+      }
+      whereClause: {
+        type: 'String'
+        defaultValue: ''
+      }
+    }
+    folder: {
+      name: 'DynamicExtract'
+    }
+  }
+  dependsOn: [
+    dynamicSalesforceDataset
+    dynamicBlobDataset
+  ]
+}
+
 // Outputs
 output dataFactoryName string = dataFactory.name
 output dataFactoryId string = dataFactory.id
 output dataFactoryPrincipalId string = dataFactory.identity.principalId
 output pipelineName string = extractPipeline.name
 output writeBackPipelineName string = writeBackPipeline.name
+output dynamicPipelineName string = dynamicExtractPipeline.name

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "17376418782773524854"
+      "templateHash": "90935902048162976"
     }
   },
   "parameters": {
@@ -103,12 +103,11 @@
       "properties": {
         "type": "AzureBlobStorage",
         "typeProperties": {
-          "serviceEndpoint": "[format('https://{0}.blob.{1}', parameters('storageAccountName'), environment().suffixes.storage)]",
-          "accountKind": "StorageV2"
-        }
+          "connectionString": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
+        },
+        "annotations": []
       },
       "dependsOn": [
-        "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(parameters('storageAccountId'), resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName')), variables('storageBlobDataContributorRoleId')))]",
         "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
       ]
     },
@@ -413,6 +412,157 @@
         "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'ProcessedInsightsBlob')]",
         "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'SalesforceAIInsights')]"
       ]
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'DynamicSalesforceDataset')]",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "Salesforce",
+          "type": "LinkedServiceReference"
+        },
+        "parameters": {
+          "objectApiName": {
+            "type": "String"
+          }
+        },
+        "type": "SalesforceV2Object",
+        "typeProperties": {
+          "objectApiName": {
+            "value": "@dataset().objectApiName",
+            "type": "Expression"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+        "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'Salesforce')]"
+      ]
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'DynamicBlobDataset')]",
+      "properties": {
+        "linkedServiceName": {
+          "referenceName": "AzureBlobStorage",
+          "type": "LinkedServiceReference"
+        },
+        "parameters": {
+          "objectApiName": {
+            "type": "String"
+          }
+        },
+        "type": "Json",
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobStorageLocation",
+            "container": "datasets",
+            "folderPath": {
+              "value": "@dataset().objectApiName",
+              "type": "Expression"
+            },
+            "fileName": {
+              "value": "@concat(dataset().objectApiName, '_', formatDateTime(utcnow(), 'yyyyMMdd_HHmmss'), '.json')",
+              "type": "Expression"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'AzureBlobStorage')]",
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DataFactory/factories/pipelines",
+      "apiVersion": "2018-06-01",
+      "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'DynamicSalesforceExtractPipeline')]",
+      "properties": {
+        "description": "Dynamic pipeline that extracts data from any Salesforce object with specified fields and saves to blob storage",
+        "activities": [
+          {
+            "name": "CopyDynamicSalesforceData",
+            "type": "Copy",
+            "dependsOn": [],
+            "policy": {
+              "timeout": "0.01:00:00",
+              "retry": 2,
+              "retryIntervalInSeconds": 30,
+              "secureOutput": false,
+              "secureInput": false
+            },
+            "typeProperties": {
+              "source": {
+                "type": "SalesforceV2Source",
+                "SOQLQuery": {
+                  "value": "@concat('SELECT ', pipeline().parameters.fieldNames, ' FROM ', pipeline().parameters.objectApiName, if(empty(pipeline().parameters.whereClause), '', concat(' WHERE ', pipeline().parameters.whereClause)))",
+                  "type": "Expression"
+                },
+                "includeDeletedObjects": false
+              },
+              "sink": {
+                "type": "JsonSink",
+                "storeSettings": {
+                  "type": "AzureBlobStorageWriteSettings"
+                },
+                "formatSettings": {
+                  "type": "JsonWriteSettings",
+                  "filePattern": "arrayOfObjects"
+                }
+              },
+              "enableStaging": false
+            },
+            "inputs": [
+              {
+                "referenceName": "DynamicSalesforceDataset",
+                "type": "DatasetReference",
+                "parameters": {
+                  "objectApiName": {
+                    "value": "@pipeline().parameters.objectApiName",
+                    "type": "Expression"
+                  }
+                }
+              }
+            ],
+            "outputs": [
+              {
+                "referenceName": "DynamicBlobDataset",
+                "type": "DatasetReference",
+                "parameters": {
+                  "objectApiName": {
+                    "value": "@pipeline().parameters.objectApiName",
+                    "type": "Expression"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "parameters": {
+          "objectApiName": {
+            "type": "String",
+            "defaultValue": "Account"
+          },
+          "fieldNames": {
+            "type": "String",
+            "defaultValue": "Id, Name"
+          },
+          "whereClause": {
+            "type": "String",
+            "defaultValue": ""
+          }
+        },
+        "folder": {
+          "name": "DynamicExtract"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+        "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'DynamicBlobDataset')]",
+        "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'DynamicSalesforceDataset')]"
+      ]
     }
   ],
   "outputs": {
@@ -435,6 +585,10 @@
     "writeBackPipelineName": {
       "type": "string",
       "value": "SalesforceWriteBackPipeline"
+    },
+    "dynamicPipelineName": {
+      "type": "string",
+      "value": "DynamicSalesforceExtractPipeline"
     }
   }
 }
