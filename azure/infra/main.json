@@ -163,8 +163,8 @@
     "dataFactoryContributorRoleId": "673868aa-7521-48a0-acc6-0f60742d39f5",
     "cognitiveServicesOpenAIUserRoleId": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd"
   },
-  "resources": {
-    "dataFactoryResource": {
+  "resources": [
+    {
       "existing": true,
       "type": "Microsoft.DataFactory/factories",
       "apiVersion": "2018-06-01",
@@ -173,7 +173,7 @@
         "dataFactory"
       ]
     },
-    "functionAppDataFactoryAccess": {
+    {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[format('Microsoft.DataFactory/factories/{0}', variables('dataFactoryName'))]",
@@ -188,7 +188,7 @@
         "functions"
       ]
     },
-    "openAiResource": {
+    {
       "existing": true,
       "type": "Microsoft.CognitiveServices/accounts",
       "apiVersion": "2024-10-01",
@@ -197,7 +197,7 @@
         "azureOpenAI"
       ]
     },
-    "functionAppOpenAIAccess": {
+    {
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
       "scope": "[format('Microsoft.CognitiveServices/accounts/{0}', variables('aiProjectName'))]",
@@ -212,7 +212,7 @@
         "functions"
       ]
     },
-    "network": {
+    {
       "condition": "[variables('effectiveVnetEnabled')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -400,7 +400,7 @@
         }
       }
     },
-    "storage": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "storage-deployment",
@@ -528,6 +528,17 @@
               ]
             },
             {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'prompt-configs')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
               "type": "Microsoft.Storage/storageAccounts/managementPolicies",
               "apiVersion": "2023-01-01",
               "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
@@ -608,7 +619,7 @@
         }
       }
     },
-    "keyVault": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "keyvault-deployment",
@@ -757,7 +768,7 @@
         }
       }
     },
-    "appInsights": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "appinsights-deployment",
@@ -852,7 +863,7 @@
         }
       }
     },
-    "functions": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "functions-deployment",
@@ -926,7 +937,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "12243553132449247893"
+              "templateHash": "3527120545178223563"
             }
           },
           "parameters": {
@@ -1014,19 +1025,6 @@
               "type": "string",
               "metadata": {
                 "description": "Azure OpenAI Deployment Name"
-              }
-            },
-            "aiBatchDeploymentName": {
-              "type": "string",
-              "defaultValue": "gpt-4o-mini-batch",
-              "metadata": {
-                "description": "Azure OpenAI Batch Deployment Name (GlobalBatch SKU)"
-              }
-            },
-            "aiApiKey": {
-              "type": "securestring",
-              "metadata": {
-                "description": "Azure OpenAI API Key"
               }
             },
             "functionsPackageUrl": {
@@ -1187,18 +1185,6 @@
                       "value": "[parameters('aiDeploymentName')]"
                     },
                     {
-                      "name": "AZURE_OPENAI_BATCH_DEPLOYMENT_NAME",
-                      "value": "[parameters('aiBatchDeploymentName')]"
-                    },
-                    {
-                      "name": "AZURE_OPENAI_API_KEY",
-                      "value": "[parameters('aiApiKey')]"
-                    },
-                    {
-                      "name": "AZURE_STORAGE_CONNECTION_STRING",
-                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
-                    },
-                    {
                       "name": "BATCH_SIZE",
                       "value": "[string(parameters('batchSize'))]"
                     },
@@ -1237,6 +1223,14 @@
                     {
                       "name": "PIPELINE_NAME",
                       "value": "SalesforceCallReportPipeline"
+                    },
+                    {
+                      "name": "DYNAMIC_DATA_FACTORY_NAME",
+                      "value": "[parameters('dataFactoryName')]"
+                    },
+                    {
+                      "name": "DYNAMIC_PIPELINE_NAME",
+                      "value": "DynamicSalesforceExtractPipeline"
                     }
                   ],
                   "functionAppScaleLimit": "[if(variables('isConsumptionPlan'), 200, if(variables('isElasticPlan'), 20, 0))]"
@@ -1329,7 +1323,7 @@
         "storage"
       ]
     },
-    "dataFactory": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "datafactory-deployment",
@@ -1374,7 +1368,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "3909971765575465342"
+              "templateHash": "90935902048162976"
             }
           },
           "parameters": {
@@ -1781,6 +1775,157 @@
                 "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'ProcessedInsightsBlob')]",
                 "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'SalesforceAIInsights')]"
               ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/datasets",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'DynamicSalesforceDataset')]",
+              "properties": {
+                "linkedServiceName": {
+                  "referenceName": "Salesforce",
+                  "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                  "objectApiName": {
+                    "type": "String"
+                  }
+                },
+                "type": "SalesforceV2Object",
+                "typeProperties": {
+                  "objectApiName": {
+                    "value": "@dataset().objectApiName",
+                    "type": "Expression"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+                "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'Salesforce')]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/datasets",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'DynamicBlobDataset')]",
+              "properties": {
+                "linkedServiceName": {
+                  "referenceName": "AzureBlobStorage",
+                  "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                  "objectApiName": {
+                    "type": "String"
+                  }
+                },
+                "type": "Json",
+                "typeProperties": {
+                  "location": {
+                    "type": "AzureBlobStorageLocation",
+                    "container": "datasets",
+                    "folderPath": {
+                      "value": "@dataset().objectApiName",
+                      "type": "Expression"
+                    },
+                    "fileName": {
+                      "value": "@concat(dataset().objectApiName, '_', formatDateTime(utcnow(), 'yyyyMMdd_HHmmss'), '.json')",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories/linkedservices', parameters('dataFactoryName'), 'AzureBlobStorage')]",
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DataFactory/factories/pipelines",
+              "apiVersion": "2018-06-01",
+              "name": "[format('{0}/{1}', parameters('dataFactoryName'), 'DynamicSalesforceExtractPipeline')]",
+              "properties": {
+                "description": "Dynamic pipeline that extracts data from any Salesforce object with specified fields and saves to blob storage",
+                "activities": [
+                  {
+                    "name": "CopyDynamicSalesforceData",
+                    "type": "Copy",
+                    "dependsOn": [],
+                    "policy": {
+                      "timeout": "0.01:00:00",
+                      "retry": 2,
+                      "retryIntervalInSeconds": 30,
+                      "secureOutput": false,
+                      "secureInput": false
+                    },
+                    "typeProperties": {
+                      "source": {
+                        "type": "SalesforceV2Source",
+                        "SOQLQuery": {
+                          "value": "@concat('SELECT ', pipeline().parameters.fieldNames, ' FROM ', pipeline().parameters.objectApiName, if(empty(pipeline().parameters.whereClause), '', concat(' WHERE ', pipeline().parameters.whereClause)))",
+                          "type": "Expression"
+                        },
+                        "includeDeletedObjects": false
+                      },
+                      "sink": {
+                        "type": "JsonSink",
+                        "storeSettings": {
+                          "type": "AzureBlobStorageWriteSettings"
+                        },
+                        "formatSettings": {
+                          "type": "JsonWriteSettings",
+                          "filePattern": "arrayOfObjects"
+                        }
+                      },
+                      "enableStaging": false
+                    },
+                    "inputs": [
+                      {
+                        "referenceName": "DynamicSalesforceDataset",
+                        "type": "DatasetReference",
+                        "parameters": {
+                          "objectApiName": {
+                            "value": "@pipeline().parameters.objectApiName",
+                            "type": "Expression"
+                          }
+                        }
+                      }
+                    ],
+                    "outputs": [
+                      {
+                        "referenceName": "DynamicBlobDataset",
+                        "type": "DatasetReference",
+                        "parameters": {
+                          "objectApiName": {
+                            "value": "@pipeline().parameters.objectApiName",
+                            "type": "Expression"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "parameters": {
+                  "objectApiName": {
+                    "type": "String",
+                    "defaultValue": "Account"
+                  },
+                  "fieldNames": {
+                    "type": "String",
+                    "defaultValue": "Id, Name"
+                  },
+                  "whereClause": {
+                    "type": "String",
+                    "defaultValue": ""
+                  }
+                },
+                "folder": {
+                  "name": "DynamicExtract"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DataFactory/factories', parameters('dataFactoryName'))]",
+                "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'DynamicBlobDataset')]",
+                "[resourceId('Microsoft.DataFactory/factories/datasets', parameters('dataFactoryName'), 'DynamicSalesforceDataset')]"
+              ]
             }
           ],
           "outputs": {
@@ -1803,6 +1948,10 @@
             "writeBackPipelineName": {
               "type": "string",
               "value": "SalesforceWriteBackPipeline"
+            },
+            "dynamicPipelineName": {
+              "type": "string",
+              "value": "DynamicSalesforceExtractPipeline"
             }
           }
         }
@@ -1812,7 +1961,7 @@
         "storage"
       ]
     },
-    "keyVaultAccessAdf": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "keyvault-access-adf-deployment",
@@ -1873,7 +2022,7 @@
         "keyVault"
       ]
     },
-    "azureOpenAI": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "azure-openai-deployment",
@@ -2155,7 +2304,7 @@
         "network"
       ]
     }
-  },
+  ],
   "outputs": {
     "functionAppName": {
       "type": "string",
