@@ -2116,6 +2116,18 @@
     "batchSize": {
       "type": "int",
       "value": "[variables('effectiveBatchSize')]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "Not used - credentials stored securely in Data Factory"
+    },
+    "nextSteps": {
+      "type": "string",
+      "value": "Deployment complete. Use the triggerPipelineUrl to start processing Salesforce data."
+    },
+    "updateSalesforceCredentials": {
+      "type": "string",
+      "value": "To update Salesforce credentials, redeploy the application with new values or update the Salesforce linked service in Data Factory."
     }
   }
 }

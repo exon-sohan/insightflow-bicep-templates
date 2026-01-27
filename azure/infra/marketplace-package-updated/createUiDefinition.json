@@ -1,0 +1,248 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+    "handler": "Microsoft.Azure.CreateUIDef",
+    "version": "0.1.2-preview",
+    "parameters": {
+        "basics": [
+            {
+                "name": "solutionName",
+                "type": "Microsoft.Common.TextBox",
+                "label": "Solution Name",
+                "toolTip": "A unique name prefix for all resources (3-15 lowercase characters).",
+                "defaultValue": "insightflow",
+                "constraints": {
+                    "required": true,
+                    "regex": "^[a-z][a-z0-9]{2,14}$",
+                    "validationMessage": "Must be 3-15 lowercase letters and numbers, starting with a letter."
+                }
+            },
+            {
+                "name": "openAiLocation",
+                "type": "Microsoft.Common.DropDown",
+                "label": "Azure OpenAI Region",
+                "toolTip": "Region for Azure OpenAI (must have GPT-4o-mini availability)",
+                "defaultValue": "eastus2",
+                "constraints": {
+                    "required": true,
+                    "allowedValues": [
+                        { "label": "East US 2", "value": "eastus2" },
+                        { "label": "Sweden Central", "value": "swedencentral" },
+                        { "label": "West Europe", "value": "westeurope" }
+                    ]
+                }
+            }
+        ],
+        "steps": [
+            {
+                "name": "salesforceConfig",
+                "label": "Salesforce",
+                "elements": [
+                    {
+                        "name": "salesforceInstanceUrl",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Salesforce Instance URL",
+                        "toolTip": "Your Salesforce URL (supports production, sandbox, and Lightning URLs)",
+                        "placeholder": "https://yourorg.my.salesforce.com",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^https:\\/\\/[a-zA-Z0-9.-]+\\.(my\\.salesforce|lightning\\.force|salesforce)\\.com\\/?$",
+                            "validationMessage": "Must be a valid Salesforce URL (e.g., https://yourorg.my.salesforce.com, https://yourorg.lightning.force.com)"
+                        }
+                    },
+                    {
+                        "name": "salesforceClientId",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "OAuth Client ID",
+                        "toolTip": "Consumer Key from Salesforce Connected App",
+                        "placeholder": "Enter your Consumer Key",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-zA-Z0-9._-]{15,}$",
+                            "validationMessage": "Client ID must be at least 15 alphanumeric characters"
+                        }
+                    },
+                    {
+                        "name": "salesforceClientSecret",
+                        "type": "Microsoft.Common.PasswordBox",
+                        "label": {
+                            "password": "OAuth Client Secret",
+                            "confirmPassword": "Confirm Client Secret"
+                        },
+                        "toolTip": "Consumer Secret from Salesforce Connected App",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^.{12,}$",
+                            "validationMessage": "Client Secret must be at least 12 characters"
+                        },
+                        "options": {
+                            "hideConfirmation": false
+                        }
+                    },
+                    {
+                        "name": "salesforceApiVersion",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Salesforce API Version",
+                        "toolTip": "Salesforce API version (e.g., 52.0, 58.0, 60.0)",
+                        "defaultValue": "60.0",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[0-9]{2,3}\\.[0-9]$",
+                            "validationMessage": "Must be a valid API version (e.g., 52.0, 60.0)"
+                        }
+                    },
+                    {
+                        "name": "salesforceSourceObject",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Source Object API Name",
+                        "toolTip": "Salesforce object to read call reports from (API name ending in __c for custom objects)",
+                        "defaultValue": "callreport__c",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-zA-Z][a-zA-Z0-9_]*(__c)?$",
+                            "validationMessage": "Must be a valid Salesforce object API name (e.g., Account, callreport__c)"
+                        }
+                    },
+                    {
+                        "name": "salesforceDestinationObject",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Destination Object API Name",
+                        "toolTip": "Salesforce object to write AI insights to. This object will receive the processed insights from Azure OpenAI.",
+                        "defaultValue": "azinsights__c",
+                        "constraints": {
+                            "required": true,
+                            "regex": "^[a-zA-Z][a-zA-Z0-9_]*(__c)?$",
+                            "validationMessage": "Must be a valid Salesforce object API name (e.g., azinsights__c)"
+                        }
+                    },
+                    {
+                        "name": "useCustomQuery",
+                        "type": "Microsoft.Common.CheckBox",
+                        "label": "Use Custom SOQL Query (Advanced)",
+                        "toolTip": "Enable only if you need a custom SOQL query. Default query retrieves all records from the source object."
+                    },
+                    {
+                        "name": "salesforceQuery",
+                        "type": "Microsoft.Common.TextBox",
+                        "label": "Custom SOQL Query",
+                        "toolTip": "Enter your custom SOQL query. Must start with SELECT and include all required fields.",
+                        "placeholder": "SELECT Id, Name, Description FROM callreport__c WHERE CreatedDate >= LAST_N_DAYS:30",
+                        "visible": "[steps('salesforceConfig').useCustomQuery]",
+                        "constraints": {
+                            "required": false,
+                            "regex": "^SELECT\\s+.+$",
+                            "validationMessage": "Must be a valid SOQL query starting with SELECT"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "settings",
+                "label": "Settings",
+                "elements": [
+                    {
+                        "name": "aiModel",
+                        "type": "Microsoft.Common.DropDown",
+                        "label": "AI Model",
+                        "toolTip": "Azure OpenAI model for analysis",
+                        "defaultValue": "gpt-5-nano",
+                        "constraints": {
+                            "required": true,
+                            "allowedValues": [
+                                { "label": "GPT-5-Nano (Fast & Cost-Effective)", "value": "gpt-5-nano" },
+                                { "label": "GPT-4o-Nano", "value": "gpt-4o-nano" },
+                                { "label": "GPT-4o-Mini", "value": "gpt-4o-mini" },
+                                { "label": "GPT-4o", "value": "gpt-4o" }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "batchSize",
+                        "type": "Microsoft.Common.Slider",
+                        "label": "Batch Size",
+                        "toolTip": "Number of records to process per batch (5-50). Lower values reduce timeout risk, higher values improve throughput.",
+                        "min": 5,
+                        "max": 50,
+                        "step": 5,
+                        "defaultValue": 10,
+                        "showStepMarkers": true,
+                        "constraints": {
+                            "required": true
+                        }
+                    },
+                    {
+                        "name": "enablePrivateNetworking",
+                        "type": "Microsoft.Common.OptionsGroup",
+                        "label": "Private Networking (Advanced)",
+                        "toolTip": "Enables private endpoints for Function App and Azure OpenAI. Requires VNet and Private DNS configuration. Increases costs. Only available for Professional/Enterprise tiers. Recommended for production environments with strict security requirements.",
+                        "defaultValue": "Disabled",
+                        "constraints": {
+                            "required": true,
+                            "allowedValues": [
+                                {
+                                    "label": "Enabled (Production)",
+                                    "value": true
+                                },
+                                {
+                                    "label": "Disabled (Cost-Effective)",
+                                    "value": false
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "review",
+                "label": "Review + Deploy",
+                "elements": [
+                    {
+                        "name": "reviewInfo",
+                        "type": "Microsoft.Common.InfoBox",
+                        "options": {
+                            "icon": "Info",
+                            "text": "Please review your configuration before deployment. All Salesforce credentials will be securely stored in Azure Key Vault and never exposed in deployment outputs."
+                        }
+                    },
+                    {
+                        "name": "configSummary",
+                        "type": "Microsoft.Common.Section",
+                        "label": "Configuration Summary",
+                        "elements": [
+                            {
+                                "name": "summaryText",
+                                "type": "Microsoft.Common.TextBlock",
+                                "options": {
+                                    "text": "[concat('Solution Name: ', basics('solutionName'), '\\n', 'AI Model: ', steps('settings').aiModel, '\\n', 'Batch Size: ', string(steps('settings').batchSize), '\\n', 'Salesforce Object: ', steps('salesforceConfig').salesforceSourceObject, '\\n', 'Private Networking: ', if(steps('settings').enablePrivateNetworking, 'Enabled', 'Disabled'))]"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "postDeploymentInfo",
+                        "type": "Microsoft.Common.InfoBox",
+                        "options": {
+                            "icon": "Warning",
+                            "text": "After deployment: (1) Start the Data Factory trigger in Azure Portal, (2) Configure Salesforce Remote Site Settings. Detailed instructions will be available in deployment outputs."
+                        }
+                    }
+                ]
+            }
+        ],
+        "outputs": {
+            "location": "[location()]",
+            "solutionName": "[basics('solutionName')]",
+            "openAiLocation": "[basics('openAiLocation')]",
+            "salesforceInstanceUrl": "[steps('salesforceConfig').salesforceInstanceUrl]",
+            "salesforceClientId": "[steps('salesforceConfig').salesforceClientId]",
+            "salesforceClientSecret": "[steps('salesforceConfig').salesforceClientSecret]",
+            "salesforceApiVersion": "[steps('salesforceConfig').salesforceApiVersion]",
+            "salesforceSourceObject": "[steps('salesforceConfig').salesforceSourceObject]",
+            "salesforceDestinationObject": "[steps('salesforceConfig').salesforceDestinationObject]",
+            "salesforceQuery": "[if(steps('salesforceConfig').useCustomQuery, steps('salesforceConfig').salesforceQuery, '')]",
+            "aiModel": "[steps('settings').aiModel]",
+            "pricingTier": "starter",
+            "batchSize": "[steps('settings').batchSize]",
+            "enablePrivateNetworking": "[steps('settings').enablePrivateNetworking]"
+        }
+    }
+}
