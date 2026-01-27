@@ -1,6 +1,6 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
-    "handler": "Microsoft.Azure.CreateUIDef",
+    "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.json#",
+    "handler": "Microsoft.Azure.CreateUIDefinition",
     "version": "0.1.2-preview",
     "parameters": {
         "basics": [
@@ -146,17 +146,15 @@
                 "elements": [
                     {
                         "name": "reviewInfo",
-                        "type": "Microsoft.Common.InfoBox",
+                        "type": "Microsoft.Common.TextBlock",
                         "options": {
-                            "icon": "Info",
                             "text": "Please review your configuration before deployment. Salesforce credentials are securely stored in Azure Data Factory and never exposed in deployment outputs."
                         }
                     },
                     {
                         "name": "postDeploymentInfo",
-                        "type": "Microsoft.Common.InfoBox",
+                        "type": "Microsoft.Common.TextBlock",
                         "options": {
-                            "icon": "Warning",
                             "text": "After deployment: (1) Start the Data Factory trigger in Azure Portal, (2) Configure Salesforce Remote Site Settings. Detailed instructions will be available in deployment outputs."
                         }
                     }
