@@ -114,7 +114,7 @@
     },
     "enablePrivateNetworking": {
       "type": "bool",
-      "defaultValue": true,
+      "defaultValue": false,
       "metadata": {
         "description": "Enable private networking for Function App and Azure OpenAI (Data Factory remains public)"
       }

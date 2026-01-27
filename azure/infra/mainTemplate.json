@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "metadata": {
     "description": "InsightFlow Azure Marketplace - Thin wrapper pointing to GitHub-hosted infrastructure templates",
-    "_comment": "IMPORTANT: Add the tracking GUID from Partner Center Technical Configuration page. Replace c5ac7a04-dbbe-459d-bb22-27f4b3d3c2e5-partnercenter below with the actual GUID shown in Partner Center for your plan."
+    "_comment": "IMPORTANT: Add the tracking GUID from Partner Center Technical Configuration page."
   },
   "parameters": {
     "solutionName": {
@@ -46,13 +46,6 @@
         "description": "Salesforce OAuth Client Secret"
       }
     },
-    "salesforceSourceObject": {
-      "type": "string",
-      "defaultValue": "callreport__c",
-      "metadata": {
-        "description": "Salesforce source object API name"
-      }
-    },
     "salesforceDestinationObject": {
       "type": "string",
       "defaultValue": "azinsights__c",
@@ -65,13 +58,6 @@
       "defaultValue": "60.0",
       "metadata": {
         "description": "Salesforce API version"
-      }
-    },
-    "salesforceQuery": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Custom SOQL query (optional)"
       }
     },
     "pricingTier": {
@@ -108,9 +94,9 @@
     },
     "templateVersion": {
       "type": "string",
-      "defaultValue": "v1.0.1",
+      "defaultValue": "v1.0.2",
       "metadata": {
-        "description": "Infrastructure template version (default: v1.0.1, use 'main' for latest)"
+        "description": "Infrastructure template version"
       }
     },
     "githubRepo": {
@@ -120,18 +106,11 @@
         "description": "GitHub repository (format: username/repo)"
       }
     },
-    "enablePrivateNetworking": {
-      "type": "bool",
-      "defaultValue": true,
-      "metadata": {
-        "description": "Enable private networking for Function App and Azure OpenAI (Data Factory remains public for easier customer access)"
-      }
-    },
     "functionsPackageUrl": {
       "type": "string",
       "defaultValue": "https://github.com/exon-sohan/insightflow-functions/releases/download/v1.0.2/functions.zip",
       "metadata": {
-        "description": "Function App package URL (Azure Blob Storage with SAS token or GitHub release URL)"
+        "description": "Function App package URL"
       }
     }
   },
@@ -156,7 +135,7 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2021-04-01",
-      "name": "[concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))]",
+      "name": "insightflow-infrastructure",
       "properties": {
         "mode": "Incremental",
         "templateLink": {
@@ -182,17 +161,11 @@
           "salesforceClientSecret": {
             "value": "[parameters('salesforceClientSecret')]"
           },
-          "salesforceSourceObject": {
-            "value": "[parameters('salesforceSourceObject')]"
-          },
           "salesforceDestinationObject": {
             "value": "[parameters('salesforceDestinationObject')]"
           },
           "salesforceApiVersion": {
             "value": "[parameters('salesforceApiVersion')]"
-          },
-          "salesforceQuery": {
-            "value": "[parameters('salesforceQuery')]"
           },
           "pricingTier": {
             "value": "[parameters('pricingTier')]"
@@ -202,9 +175,6 @@
           },
           "batchSize": {
             "value": "[parameters('batchSize')]"
-          },
-          "enablePrivateNetworking": {
-            "value": "[parameters('enablePrivateNetworking')]"
           },
           "functionsPackageUrl": {
             "value": "[parameters('functionsPackageUrl')]"
@@ -216,47 +186,59 @@
   "outputs": {
     "triggerPipelineUrl": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.triggerPipelineUrl.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.triggerPipelineUrl.value]"
     },
     "healthCheckUrl": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.healthCheckUrl.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.healthCheckUrl.value]"
     },
     "setupInstructionsUrl": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.setupInstructionsUrl.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.setupInstructionsUrl.value]"
     },
     "salesforceRemoteSiteUrl": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.salesforceRemoteSiteUrl.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.salesforceRemoteSiteUrl.value]"
     },
     "functionAppName": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.functionAppName.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.functionAppName.value]"
     },
     "dataFactoryName": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.dataFactoryName.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.dataFactoryName.value]"
     },
     "storageAccountName": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.storageAccountName.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.storageAccountName.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.keyVaultName.value]"
+    },
+    "nextSteps": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.nextSteps.value]"
+    },
+    "updateSalesforceCredentials": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.updateSalesforceCredentials.value]"
     },
     "aiModel": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.aiModel.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.aiModel.value]"
     },
     "batchSize": {
       "type": "int",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.batchSize.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.batchSize.value]"
     },
     "pricingTier": {
       "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.pricingTier.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.pricingTier.value]"
     },
     "recordLimit": {
       "type": "int",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.recordLimit.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.recordLimit.value]"
     }
   }
 }

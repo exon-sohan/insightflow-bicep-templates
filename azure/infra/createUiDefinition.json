@@ -91,18 +91,6 @@
                         }
                     },
                     {
-                        "name": "salesforceSourceObject",
-                        "type": "Microsoft.Common.TextBox",
-                        "label": "Source Object API Name",
-                        "toolTip": "Salesforce object to read call reports from (API name ending in __c for custom objects)",
-                        "defaultValue": "callreport__c",
-                        "constraints": {
-                            "required": true,
-                            "regex": "^[a-zA-Z][a-zA-Z0-9_]*(__c)?$",
-                            "validationMessage": "Must be a valid Salesforce object API name (e.g., Account, callreport__c)"
-                        }
-                    },
-                    {
                         "name": "salesforceDestinationObject",
                         "type": "Microsoft.Common.TextBox",
                         "label": "Destination Object API Name",
@@ -112,25 +100,6 @@
                             "required": true,
                             "regex": "^[a-zA-Z][a-zA-Z0-9_]*(__c)?$",
                             "validationMessage": "Must be a valid Salesforce object API name (e.g., azinsights__c)"
-                        }
-                    },
-                    {
-                        "name": "useCustomQuery",
-                        "type": "Microsoft.Common.CheckBox",
-                        "label": "Use Custom SOQL Query (Advanced)",
-                        "toolTip": "Enable only if you need a custom SOQL query. Default query retrieves all records from the source object."
-                    },
-                    {
-                        "name": "salesforceQuery",
-                        "type": "Microsoft.Common.TextBox",
-                        "label": "Custom SOQL Query",
-                        "toolTip": "Enter your custom SOQL query. Must start with SELECT and include all required fields.",
-                        "placeholder": "SELECT Id, Name, Description FROM callreport__c WHERE CreatedDate >= LAST_N_DAYS:30",
-                        "visible": "[steps('salesforceConfig').useCustomQuery]",
-                        "constraints": {
-                            "required": false,
-                            "regex": "^SELECT\\s+.+$",
-                            "validationMessage": "Must be a valid SOQL query starting with SELECT"
                         }
                     }
                 ]
@@ -168,26 +137,6 @@
                         "constraints": {
                             "required": true
                         }
-                    },
-                    {
-                        "name": "enablePrivateNetworking",
-                        "type": "Microsoft.Common.OptionsGroup",
-                        "label": "Private Networking (Advanced)",
-                        "toolTip": "Enables private endpoints for Function App and Azure OpenAI. Requires VNet and Private DNS configuration. Increases costs. Only available for Professional/Enterprise tiers. Recommended for production environments with strict security requirements.",
-                        "defaultValue": "Disabled",
-                        "constraints": {
-                            "required": true,
-                            "allowedValues": [
-                                {
-                                    "label": "Enabled (Production)",
-                                    "value": true
-                                },
-                                {
-                                    "label": "Disabled (Cost-Effective)",
-                                    "value": false
-                                }
-                            ]
-                        }
                     }
                 ]
             },
@@ -200,7 +149,7 @@
                         "type": "Microsoft.Common.InfoBox",
                         "options": {
                             "icon": "Info",
-                            "text": "Please review your configuration before deployment. All Salesforce credentials will be securely stored in Azure Key Vault and never exposed in deployment outputs."
+                            "text": "Please review your configuration before deployment. Salesforce credentials are securely stored in Azure Data Factory and never exposed in deployment outputs."
                         }
                     },
                     {
@@ -212,7 +161,7 @@
                                 "name": "summaryText",
                                 "type": "Microsoft.Common.TextBlock",
                                 "options": {
-                                    "text": "[concat('Solution Name: ', basics('solutionName'), '\\n', 'AI Model: ', steps('settings').aiModel, '\\n', 'Batch Size: ', string(steps('settings').batchSize), '\\n', 'Salesforce Object: ', steps('salesforceConfig').salesforceSourceObject, '\\n', 'Private Networking: ', if(steps('settings').enablePrivateNetworking, 'Enabled', 'Disabled'))]"
+                                    "text": "[concat('Solution Name: ', basics('solutionName'), '\\n', 'AI Model: ', steps('settings').aiModel, '\\n', 'Batch Size: ', string(steps('settings').batchSize))]"
                                 }
                             }
                         ]
@@ -236,13 +185,10 @@
             "salesforceClientId": "[steps('salesforceConfig').salesforceClientId]",
             "salesforceClientSecret": "[steps('salesforceConfig').salesforceClientSecret]",
             "salesforceApiVersion": "[steps('salesforceConfig').salesforceApiVersion]",
-            "salesforceSourceObject": "[steps('salesforceConfig').salesforceSourceObject]",
             "salesforceDestinationObject": "[steps('salesforceConfig').salesforceDestinationObject]",
-            "salesforceQuery": "[if(steps('salesforceConfig').useCustomQuery, steps('salesforceConfig').salesforceQuery, '')]",
             "aiModel": "[steps('settings').aiModel]",
             "pricingTier": "starter",
-            "batchSize": "[steps('settings').batchSize]",
-            "enablePrivateNetworking": "[steps('settings').enablePrivateNetworking]"
+            "batchSize": "[steps('settings').batchSize]"
         }
     }
 }
