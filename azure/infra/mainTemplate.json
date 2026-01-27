@@ -214,14 +214,6 @@
     }
   ],
   "outputs": {
-    "nextSteps": {
-      "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.nextSteps.value]"
-    },
-    "updateSalesforceCredentials": {
-      "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.updateSalesforceCredentials.value]"
-    },
     "triggerPipelineUrl": {
       "type": "string",
       "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.triggerPipelineUrl.value]"
@@ -249,10 +241,6 @@
     "storageAccountName": {
       "type": "string",
       "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.storageAccountName.value]"
-    },
-    "keyVaultName": {
-      "type": "string",
-      "value": "[reference(concat('insightflow-infrastructure-', uniqueString(resourceGroup().id, parameters('solutionName')))).outputs.keyVaultName.value]"
     },
     "aiModel": {
       "type": "string",
