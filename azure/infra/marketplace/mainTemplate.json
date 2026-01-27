@@ -1,0 +1,244 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "InsightFlow Azure Marketplace - Thin wrapper pointing to GitHub-hosted infrastructure templates",
+    "_comment": "IMPORTANT: Add the tracking GUID from Partner Center Technical Configuration page."
+  },
+  "parameters": {
+    "solutionName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 15,
+      "metadata": {
+        "description": "Solution name prefix (lowercase, no spaces)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "openAiLocation": {
+      "type": "string",
+      "defaultValue": "eastus2",
+      "metadata": {
+        "description": "Azure region for OpenAI (may differ from main location due to model availability)"
+      }
+    },
+    "salesforceInstanceUrl": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Salesforce Instance URL"
+      }
+    },
+    "salesforceClientId": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Salesforce OAuth Client ID"
+      }
+    },
+    "salesforceClientSecret": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Salesforce OAuth Client Secret"
+      }
+    },
+    "salesforceDestinationObject": {
+      "type": "string",
+      "defaultValue": "azinsights__c",
+      "metadata": {
+        "description": "Salesforce destination object API name for AI insights"
+      }
+    },
+    "salesforceApiVersion": {
+      "type": "string",
+      "defaultValue": "60.0",
+      "metadata": {
+        "description": "Salesforce API version"
+      }
+    },
+    "pricingTier": {
+      "type": "string",
+      "defaultValue": "starter",
+      "allowedValues": [
+        "starter"
+      ],
+      "metadata": {
+        "description": "Pricing tier (Starter only)"
+      }
+    },
+    "aiModel": {
+      "type": "string",
+      "defaultValue": "gpt-5-nano",
+      "allowedValues": [
+        "gpt-5-nano",
+        "gpt-4o-nano",
+        "gpt-4o-mini",
+        "gpt-4o"
+      ],
+      "metadata": {
+        "description": "AI Model selection"
+      }
+    },
+    "batchSize": {
+      "type": "int",
+      "defaultValue": 10,
+      "minValue": 5,
+      "maxValue": 50,
+      "metadata": {
+        "description": "Batch processing size"
+      }
+    },
+    "templateVersion": {
+      "type": "string",
+      "defaultValue": "v1.0.2",
+      "metadata": {
+        "description": "Infrastructure template version"
+      }
+    },
+    "githubRepo": {
+      "type": "string",
+      "defaultValue": "exon-sohan/insightflow-bicep-templates",
+      "metadata": {
+        "description": "GitHub repository (format: username/repo)"
+      }
+    },
+    "functionsPackageUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/exon-sohan/insightflow-functions/releases/download/v1.0.2/functions.zip",
+      "metadata": {
+        "description": "Function App package URL"
+      }
+    }
+  },
+  "variables": {
+    "templateBaseUrl": "[concat('https://raw.githubusercontent.com/', parameters('githubRepo'), '/', parameters('templateVersion'), '/azure/infra')]",
+    "infrastructureTemplateUri": "[concat(variables('templateBaseUrl'), '/main.json')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2021-04-01",
+      "name": "pid-c5ac7a04-dbbe-459d-bb22-27f4b3d3c2e5-partnercenter",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": []
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2021-04-01",
+      "name": "insightflow-infrastructure",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('infrastructureTemplateUri')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "solutionName": {
+            "value": "[parameters('solutionName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "openAiLocation": {
+            "value": "[parameters('openAiLocation')]"
+          },
+          "salesforceInstanceUrl": {
+            "value": "[parameters('salesforceInstanceUrl')]"
+          },
+          "salesforceClientId": {
+            "value": "[parameters('salesforceClientId')]"
+          },
+          "salesforceClientSecret": {
+            "value": "[parameters('salesforceClientSecret')]"
+          },
+          "salesforceDestinationObject": {
+            "value": "[parameters('salesforceDestinationObject')]"
+          },
+          "salesforceApiVersion": {
+            "value": "[parameters('salesforceApiVersion')]"
+          },
+          "pricingTier": {
+            "value": "[parameters('pricingTier')]"
+          },
+          "aiModel": {
+            "value": "[parameters('aiModel')]"
+          },
+          "batchSize": {
+            "value": "[parameters('batchSize')]"
+          },
+          "functionsPackageUrl": {
+            "value": "[parameters('functionsPackageUrl')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "triggerPipelineUrl": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.triggerPipelineUrl.value]"
+    },
+    "healthCheckUrl": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.healthCheckUrl.value]"
+    },
+    "setupInstructionsUrl": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.setupInstructionsUrl.value]"
+    },
+    "salesforceRemoteSiteUrl": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.salesforceRemoteSiteUrl.value]"
+    },
+    "functionAppName": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.functionAppName.value]"
+    },
+    "dataFactoryName": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.dataFactoryName.value]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.storageAccountName.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.keyVaultName.value]"
+    },
+    "nextSteps": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.nextSteps.value]"
+    },
+    "updateSalesforceCredentials": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.updateSalesforceCredentials.value]"
+    },
+    "aiModel": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.aiModel.value]"
+    },
+    "batchSize": {
+      "type": "int",
+      "value": "[reference('insightflow-infrastructure').outputs.batchSize.value]"
+    },
+    "pricingTier": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.pricingTier.value]"
+    },
+    "recordLimit": {
+      "type": "int",
+      "value": "[reference('insightflow-infrastructure').outputs.recordLimit.value]"
+    }
+  }
+}

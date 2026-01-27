@@ -153,6 +153,20 @@
                         }
                     },
                     {
+                        "name": "configSummary",
+                        "type": "Microsoft.Common.Section",
+                        "label": "Configuration Summary",
+                        "elements": [
+                            {
+                                "name": "summaryText",
+                                "type": "Microsoft.Common.TextBlock",
+                                "options": {
+                                    "text": "[concat('Solution Name: ', basics('solutionName'), '\\n', 'AI Model: ', steps('settings').aiModel, '\\n', 'Batch Size: ', string(steps('settings').batchSize))]"
+                                }
+                            }
+                        ]
+                    },
+                    {
                         "name": "postDeploymentInfo",
                         "type": "Microsoft.Common.InfoBox",
                         "options": {
