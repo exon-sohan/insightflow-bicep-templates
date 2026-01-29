@@ -372,15 +372,7 @@
                 "writeBatchSize": 5000,
                 "ignoreNullValues": false
               },
-              "enableStaging": false,
-              "translator": {
-                "type": "TabularTranslator",
-                "typeConversion": true,
-                "typeConversionSettings": {
-                  "allowDataTruncation": true,
-                  "treatBooleanAsNumber": false
-                }
-              }
+              "enableStaging": false
             },
             "inputs": [
               {
