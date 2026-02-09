@@ -244,10 +244,6 @@
       "type": "string",
       "value": "[reference('insightflow-infrastructure').outputs.storageAccountName.value]"
     },
-    "keyVaultName": {
-      "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.keyVaultName.value]"
-    },
     "aiModel": {
       "type": "string",
       "value": "[reference('insightflow-infrastructure').outputs.aiModel.value]"
