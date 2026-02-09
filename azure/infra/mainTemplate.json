@@ -200,6 +200,14 @@
       "type": "string",
       "value": "[reference('insightflow-infrastructure').outputs.functionAppKey.value]"
     },
+    "healthCheckUrl": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.healthCheckUrl.value]"
+    },
+    "setupInstructionsUrl": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.setupInstructionsUrl.value]"
+    },
     "functionAppName": {
       "type": "string",
       "value": "[reference('insightflow-infrastructure').outputs.functionAppName.value]"

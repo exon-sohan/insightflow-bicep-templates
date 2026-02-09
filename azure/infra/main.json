@@ -2097,6 +2097,14 @@
       "type": "string",
       "value": "[reference('functions').outputs.functionAppDefaultKey.value]"
     },
+    "healthCheckUrl": {
+      "type": "string",
+      "value": "Not available - use triggerPipelineUrl with POST to test connectivity"
+    },
+    "setupInstructionsUrl": {
+      "type": "string",
+      "value": "Not available - see nextSteps output for setup instructions"
+    },
     "pricingTier": {
       "type": "string",
       "value": "[parameters('pricingTier')]"
