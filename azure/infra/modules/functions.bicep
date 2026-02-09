@@ -298,3 +298,4 @@ output functionAppName string = functionApp.name
 output functionAppId string = functionApp.id
 output functionAppUrl string = functionApp.properties.defaultHostName
 output functionAppPrincipalId string = functionApp.identity.principalId
+output functionAppDefaultKey string = listKeys('${functionApp.id}/host/default', '2023-01-01').functionKeys.default

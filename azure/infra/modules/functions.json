@@ -379,6 +379,10 @@
     "functionAppPrincipalId": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]"
+    },
+    "functionAppDefaultKey": {
+      "type": "string",
+      "value": "[listKeys(concat(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '/host/default'), '2023-01-01').functionKeys.default]"
     }
   }
 }

@@ -2081,17 +2081,17 @@
       "type": "string",
       "value": "[format('https://{0}/api/trigger-pipeline', reference('functions').outputs.functionAppUrl.value)]"
     },
-    "healthCheckUrl": {
+    "checkPipelineStatusUrl": {
       "type": "string",
-      "value": "[format('https://{0}/api/health', reference('functions').outputs.functionAppUrl.value)]"
+      "value": "[format('https://{0}/api/check-pipeline-status', reference('functions').outputs.functionAppUrl.value)]"
     },
     "salesforceRemoteSiteUrl": {
       "type": "string",
       "value": "[format('https://{0}', reference('functions').outputs.functionAppUrl.value)]"
     },
-    "setupInstructionsUrl": {
+    "functionAppKey": {
       "type": "string",
-      "value": "[format('https://{0}/api/setup-instructions', reference('functions').outputs.functionAppUrl.value)]"
+      "value": "[reference('functions').outputs.functionAppDefaultKey.value]"
     },
     "pricingTier": {
       "type": "string",

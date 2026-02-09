@@ -188,17 +188,17 @@
       "type": "string",
       "value": "[reference('insightflow-infrastructure').outputs.triggerPipelineUrl.value]"
     },
-    "healthCheckUrl": {
+    "checkPipelineStatusUrl": {
       "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.healthCheckUrl.value]"
-    },
-    "setupInstructionsUrl": {
-      "type": "string",
-      "value": "[reference('insightflow-infrastructure').outputs.setupInstructionsUrl.value]"
+      "value": "[reference('insightflow-infrastructure').outputs.checkPipelineStatusUrl.value]"
     },
     "salesforceRemoteSiteUrl": {
       "type": "string",
       "value": "[reference('insightflow-infrastructure').outputs.salesforceRemoteSiteUrl.value]"
+    },
+    "functionAppKey": {
+      "type": "string",
+      "value": "[reference('insightflow-infrastructure').outputs.functionAppKey.value]"
     },
     "functionAppName": {
       "type": "string",
