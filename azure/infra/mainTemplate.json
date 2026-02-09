@@ -46,13 +46,6 @@
         "description": "Salesforce OAuth Client Secret"
       }
     },
-    "salesforceSourceObject": {
-      "type": "string",
-      "defaultValue": "callreport__c",
-      "metadata": {
-        "description": "Salesforce source object API name"
-      }
-    },
     "salesforceDestinationObject": {
       "type": "string",
       "defaultValue": "azinsights__c",
@@ -65,13 +58,6 @@
       "defaultValue": "60.0",
       "metadata": {
         "description": "Salesforce API version"
-      }
-    },
-    "salesforceQuery": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Custom SOQL query (optional)"
       }
     },
     "pricingTier": {
@@ -118,13 +104,6 @@
       "defaultValue": "exon-sohan/insightflow-bicep-templates",
       "metadata": {
         "description": "GitHub repository (format: username/repo)"
-      }
-    },
-    "enablePrivateNetworking": {
-      "type": "bool",
-      "defaultValue": true,
-      "metadata": {
-        "description": "Enable private networking for Function App and Azure OpenAI"
       }
     },
     "functionsPackageUrl": {
@@ -182,17 +161,11 @@
           "salesforceClientSecret": {
             "value": "[parameters('salesforceClientSecret')]"
           },
-          "salesforceSourceObject": {
-            "value": "[parameters('salesforceSourceObject')]"
-          },
           "salesforceDestinationObject": {
             "value": "[parameters('salesforceDestinationObject')]"
           },
           "salesforceApiVersion": {
             "value": "[parameters('salesforceApiVersion')]"
-          },
-          "salesforceQuery": {
-            "value": "[parameters('salesforceQuery')]"
           },
           "pricingTier": {
             "value": "[parameters('pricingTier')]"
@@ -202,9 +175,6 @@
           },
           "batchSize": {
             "value": "[parameters('batchSize')]"
-          },
-          "enablePrivateNetworking": {
-            "value": "[parameters('enablePrivateNetworking')]"
           },
           "functionsPackageUrl": {
             "value": "[parameters('functionsPackageUrl')]"
